@@ -10,7 +10,7 @@ uses
 
 type
   TForm1 = class(TForm)
-    ImgView321: TImgView32;
+    ImgView: TImgView32;
     Panel1: TPanel;
     Panel2: TPanel;
     cbResolution: TComboBox;
@@ -34,12 +34,7 @@ type
     Label9: TLabel;
     Edit1: TEdit;
     chbQuality: TCheckBox;
-    procedure ImgView321MouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer; Layer: TCustomLayer);
-    procedure ImgView321MouseUp(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer; Layer: TCustomLayer);
-    procedure ImgView321MouseMove(Sender: TObject; Shift: TShiftState; X,
-      Y: Integer; Layer: TCustomLayer);
+    Label10: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure XSpinChange(Sender: TObject);
     procedure YSpinChange(Sender: TObject);
@@ -52,7 +47,7 @@ type
     procedure cbApproxChange(Sender: TObject);
     procedure chbQualityClick(Sender: TObject);
   private
-     pdx, pdy, ccx, ccy:Longint;
+     pdx, pdy, ccx, ccy:Double;//Longint;
      is_dragged: LongBool;
      is_hqual:LongBool;
       n_nodraw:LongInt;
@@ -60,6 +55,17 @@ type
       fposx:Double;
       fposy:Double;
       fQuality: Boolean;
+      FSelection: TPositionedLayer;
+      RBLayer: TRubberbandLayer;
+
+    procedure onLMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure onLMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure onLMouseMove(Sender: TObject; Shift: TShiftState;
+                           X, Y: Integer);
+
+    procedure SetSelection(Value: TPositionedLayer);
     procedure Redraw(const FQoality:  Boolean = False);
     procedure setPosx(const Value: Double);
     procedure setPosy(const Value: Double);
@@ -67,6 +73,7 @@ type
     property posx: Double read fposx write setPosx;
     property posy: Double read fposy write setPosy;
     property scale: Double read fscale write setScale;
+    property Selection: TPositionedLayer read FSelection write SetSelection;
 
   public
     { Public declarations }
@@ -80,7 +87,7 @@ var
    cImg_size : array[0..6] of TPoint =
    (
     (x:800; y:600),
-    (x:1024; y:1024),
+    (x:1024; y:768),
     (x:1600; y:1200),
     (x:2272; y:1704),
     (x:3264; y:2448),
@@ -99,7 +106,9 @@ procedure TForm1.Redraw(const FQoality: Boolean = False);
 var
  layer: TBitmapLayer;
  P: TPoint;
+ W, H: Single;
 begin
+
  fractal.Width := Cimg_size[cbResolution.ItemIndex].X;
  fractal.Height := Cimg_size[cbResolution.ItemIndex].Y;
  fractal.ApproxResolution := cApporox[cbApprox.ItemIndex];
@@ -109,23 +118,51 @@ begin
  fractal.XPos := fposx;
  fractal.YPos := fposy;
  fractal.ZScale := fscale;
- if FQoality then
-  fractal.QualityDraw
- else
-  fractal.PreviewDraw;
 
- if assigned(fractal.ResultBitmap32) then
- begin
-  with ImgView321 do
+  with ImgView do
   begin
-    Layers.Clear;
+   if Layers.Count = 0 then
+   begin
+     layer := TBitmapLayer.Create(ImgView.Layers);
+     layer.OnMouseDown := onLMouseDown;
+     layer.OnMouseMove := onLMouseMove;
+     layer.OnMouseUp := onLMouseUp;
+   end else
+     layer := TBitmapLayer(Selection);
+    with layer do
+    begin
+      w := fractal.Width * 0.5;
+      h := fractal.Height * 0.5;
+
+      with ImgView.GetViewportRect do
+          P := ImgView.ControlToBitmap(Point(Width div 2, Height div 2));
+      with ImgView.Bitmap do
+       Location := GR32.FloatRect(P.X - w, P.Y - h, P.X + w, P.Y + h);
+      Scaled := True;
+    end;
+
+    Selection := layer;
+//    Layers.Clear;
     Scale := 1;
-    Bitmap := fractal.ResultBitmap32;
+//    Bitmap := fractal.ResultBitmap32;
 //    Bitmap.SetSize(fractal.ResultBitmap32.Width, fractal.ResultBitmap32.Height);
 //    Bitmap.Clear(clBlack32);
 //    Bitmap.Assign(fractal.ResultBitmap32);
   end;
+
+
+ if FQoality then
+ begin
+  fractal.QualityDraw(layer.Bitmap)
+ end else
+ begin
+  fractal.PreviewDraw(layer.Bitmap);
+//    layer.Bitmap.Assign(fractal.ResultBitmap32);
  end;
+
+// if assigned(fractal.ResultBitmap32) then
+// begin
+// end;
 end;
 
 procedure TForm1.ScrollBarDepthChange(Sender: TObject);
@@ -167,6 +204,44 @@ begin
 
 end;
 
+procedure TForm1.SetSelection(Value: TPositionedLayer);
+begin
+  if Value <> FSelection then
+  begin
+{    if RBLayer <> nil then
+    begin
+      RBLayer.ChildLayer := nil;
+      RBLayer.LayerOptions := LOB_NO_UPDATE;
+      ImgView.Invalidate;
+    end;
+}
+     FSelection := Value;
+
+{    if Value <> nil then
+    begin
+      if RBLayer = nil then
+      begin
+        RBLayer := TRubberBandLayer.Create(ImgView.Layers);
+        RBLayer.MinHeight := 1;
+        RBLayer.MinWidth := 1;
+      end
+      else RBLayer.BringToFront;
+      RBLayer.ChildLayer := Value;
+      RBLayer.LayerOptions := LOB_VISIBLE or LOB_MOUSE_EVENTS or LOB_NO_UPDATE;
+      RBLayer.OnResizing := RBResizing;
+
+      if Value is TBitmapLayer then
+        with TBitmapLayer(Value) do
+        begin
+          pnlBitmapLayer.Visible := True;
+          LayerOpacity.Position := Bitmap.MasterAlpha;
+          LayerInterpolate.Checked := Bitmap.Resampler.ClassType = TDraftResampler;
+        end
+}
+  end;
+
+end;
+
 procedure TForm1.cbApproxChange(Sender: TObject);
 begin
  Redraw(fQuality);
@@ -190,14 +265,22 @@ var
   p: TPoint;
   i: integer;
 begin
- posx := -2.6;
- posy := -2;
- scale := 0.1;
+ posx :=-2.74217800;
+ posy :=-1.81874501;
+ scale := 0.20736000;
  fQuality := False;
+
+//  Application.HintColor := clGrayText;
+  Application.HintPause := 250;
+  Application.HintHidePause := 9000;
+
 
  fractal := TFractal.Create;
  fractal.Width := cImg_size[1].X;
  fractal.Height := cImg_size[1].Y;
+ fractal.XPos := posx;
+ fractal.YPos := posy;
+ fractal.ZScale := scale;
 
  ci := TColorSItem.Create;
  ci.Colors.Add(TLerpTag.Create(0,0,0,0,64));
@@ -216,6 +299,7 @@ begin
  for I := 0 to fractal.ColorSheme.Colorshemas.Count - 1 do
   cbColorSheme.Items.Add(fractal.ColorSheme.Colorshemas.Items[i].Name);
  cbColorSheme.ItemIndex := fractal.ColorSheme.SelectedIndex;
+ ImgView.SetupBitmap(True, clWhite32);
 end;
 
 procedure TForm1.FormMouseWheel(Sender: TObject; Shift: TShiftState;
@@ -225,12 +309,11 @@ begin
 
     Handled:=True;
 
-
     ns:=scale * power(1.2, (WheelDelta / 120));
     ds := 1/scale - 1/ns;
     scale:=ns;
 
-    posx:=posx + ds * (ccx / 1024);
+    posx:=posx  + ds * (ccx / 1024);
     posy:=posy + ds * (ccy / 1024);
 
 
@@ -249,31 +332,41 @@ begin
  Redraw(fQuality);
 end;
 
-procedure TForm1.ImgView321MouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer; Layer: TCustomLayer);
+procedure TForm1.onLMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+ fx, fy: Double;
 begin
-
-  pdx:=X;
-  pdy:=Y;
+    fx := X - (TPositionedLayer(selection).GetAdjustedLocation.Left);
+    fy := Y - (TPositionedLayer(selection).GetAdjustedLocation.Top);
+  pdx:=fX;
+  pdy:=fY;
   if(Button = mbLeft)then
   begin
     is_dragged:=True;
   end;
 end;
 
-procedure TForm1.ImgView321MouseMove(Sender: TObject; Shift: TShiftState; X,
-  Y: Integer; Layer: TCustomLayer);
+procedure TForm1.onLMouseMove(Sender: TObject; Shift: TShiftState;
+                                X, Y: Integer);
+var
+ fx, fy: Double;
 begin
-    ccx:=x;
-    ccy:=y;
+
+    fx := X - (TPositionedLayer(selection).GetAdjustedLocation.Left);
+    fy := Y - (TPositionedLayer(selection).GetAdjustedLocation.Top);
+
+    ccx:=fx;//x;
+    ccy:=fy;//y;
+//    Label10.Caption := 'X = ' + IntToStr(x) + '; Y = ' + IntToStr(Y);
 
     if(is_dragged)then
     begin
-      posx:=posx + (pdx - x) / (1024 * scale);
-      posy:=posy + (pdy - y) / (1024 * scale);
+      posx:=posx + (pdx - fx) / (1024 * scale);
+      posy:=posy + (pdy - fy) / (1024 * scale);
 
-      pdy:=y;
-      pdx:=x;
+      pdy:=fy;
+      pdx:=fx;
 
       inc(n_nodraw);
       Application.ProcessMessages;
@@ -283,18 +376,20 @@ begin
         Redraw(fQuality);
       end;
     end;
-
 end;
 
-procedure TForm1.ImgView321MouseUp(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer; Layer: TCustomLayer);
+procedure TForm1.onLMouseUp(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+var
+ fx, fy: Double;
 begin
-    pdx:=X;
-    pdy:=Y;
+    fx := X - (TPositionedLayer(selection).GetAdjustedLocation.Left);
+    fy := Y - (TPositionedLayer(selection).GetAdjustedLocation.Top);
+    pdx:=fX;
+    pdy:=fY;
     if(Button = mbLeft)then begin
       is_dragged:=False;
     end;
-
 end;
 
 procedure TForm1.XSpinChange(Sender: TObject);

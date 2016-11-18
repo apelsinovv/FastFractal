@@ -16,7 +16,7 @@ object Form1: TForm1
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
-  object ImgView321: TImgView32
+  object ImgView: TImgView32
     Left = 0
     Top = 41
     Width = 720
@@ -24,18 +24,15 @@ object Form1: TForm1
     Align = alClient
     Bitmap.ResamplerClassName = 'TNearestResampler'
     BitmapAlign = baCustom
+    ParentShowHint = False
     Scale = 1.000000000000000000
     ScaleMode = smScale
     ScrollBars.ShowHandleGrip = True
     ScrollBars.Style = rbsDefault
     ScrollBars.Size = 17
+    ShowHint = False
     OverSize = 0
     TabOrder = 0
-    OnMouseDown = ImgView321MouseDown
-    OnMouseMove = ImgView321MouseMove
-    OnMouseUp = ImgView321MouseUp
-    ExplicitLeft = 161
-    ExplicitTop = 161
   end
   object Panel1: TPanel
     Left = 0
@@ -202,6 +199,13 @@ object Form1: TForm1
       Width = 33
       Height = 13
       Caption = 'Depth:'
+    end
+    object Label10: TLabel
+      Left = 16
+      Top = 416
+      Width = 37
+      Height = 13
+      Caption = 'Label10'
     end
     object XSpin: TJvSpinEdit
       Left = 42

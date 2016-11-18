@@ -89,7 +89,7 @@ type
     class function cb_progress(sender:TObject; p: Integer): LongBool; stdcall; static;
     constructor Create(sender: TObject; const map:PTraceMap; const RoundWidth, RoundHeight: Integer;
                                   const pixelUnitH, pixelUnitW: Integer;
-                                  const xstart, ystart, zscale, approx: Double;
+                                  const xstart, ystart, zscale: Double;
                                   const zdepth: Integer);
   end;
 
@@ -153,17 +153,19 @@ type
   TRasterizer = class(TThread)
   private
    fmap: PTraceMap;
-   fbmp: TBitmap;
+   fbmp: Tobject;
+   fresType: TresultType;
    fcl_gradiento_float: PGradientoFloat;
+
    fWidth,
    fHeight,
    fzskip: LongInt;
-    procedure fractal_map_rasterize(b: TBitmap; map: PTraceMap;
+    procedure fractal_map_rasterize(b: TObject; map: PTraceMap;
       cl_gradiento_float: PGradientoFloat; w, h, zskip: Integer);
   protected
    procedure Execute; override;
   public
-   constructor Create(bmp:TBitmap; map:PTraceMap; cl_gradiento_float: PGradientoFloat; const width,height, zskip:Longint);
+   constructor Create(bmp:TObject; resType: TresultType; map:PTraceMap; cl_gradiento_float: PGradientoFloat; const width,height, zskip:Longint);
   end;
 
 
@@ -222,8 +224,8 @@ type
   public
    constructor Create;
 
-   procedure PreviewDraw(const ResultType: TResultType = rtBmp32);
-   procedure QualityDraw(const ResultType: TResultType = rtBmp32);
+   procedure PreviewDraw(bmp: TObject; const ResultType: TResultType = rtBmp32);
+   procedure QualityDraw(bmp: TObject; const ResultType: TResultType = rtBmp32);
    function SetColorSheme(ci: TColorSItem; const interpolation: TInterpolation = ipLenear): Boolean; overload;
    function SetColorSheme(const index: Integer; const interpolation: TInterpolation = ipLenear): Boolean; overload;
    function SetColorSheme(const name: String; const interpolation: TInterpolation = ipLenear): Boolean; overload;
@@ -334,7 +336,7 @@ end;
 
 constructor TMandelbrotMap.Create(sender: TObject;const map:PTraceMap;const RoundWidth, RoundHeight: Integer;
                                   const pixelUnitH, pixelUnitW: Integer;
-                                  const xstart, ystart, zscale, approx: Double;
+                                  const xstart, ystart, zscale: Double;
                                   const zdepth: Integer);
 begin
    fSender := sender;
@@ -438,12 +440,13 @@ end;
 
 
 
-procedure TFractal.PreviewDraw(const ResultType: TResultType);
+procedure TFractal.PreviewDraw(bmp: TObject; const ResultType: TResultType);
 var map:PTraceMap;
 po:Pointer;
-b: TBitmap;
+//b: TBitmap;
 ix, iy:Longint;
-line, pixel, l_pixel:PRGBA;
+line: Pointer;
+pixel, l_pixel:PRGBA;
 //z:TComplex;
 t0, t1:Double;
 zmw:Longint;
@@ -490,13 +493,13 @@ begin
 
   aligned_get_mem(po, Pointer(map), zmw * zmh * sizeof(single), 16);
 
-  b:=TBitmap.Create;
+{  b:=TBitmap.Create;
 
   b.PixelFormat:=pf32bit;
 
   b.Width:=maxmw;
   b.Height:=maxmh;
-
+}
 
   //ProgressBar1.Max:=zmh;
   //ProgressBar1.Position:=0;
@@ -504,7 +507,7 @@ begin
 
 //  fractal_mandelbrot_fast(map, ColorSheme.FractalDepth + g_mandelbrot_skip, zmw, zmh, zmz, zmz, fxstart, fystart, fzscale);
   ResetEvent(fFinishedEvent);
-  fmandelbortMap := TMandelbrotMap.Create(self, map, zmw, zmh, zmz, zmz, fxstart, fystart,  fzscale, 1 / fAntialiasing , ColorSheme.FractalDepth + g_mandelbrot_skip);
+  fmandelbortMap := TMandelbrotMap.Create(self, map, zmw, zmh, zmz, zmz, fxstart, fystart,  fzscale,  ColorSheme.FractalDepth + g_mandelbrot_skip);
   fResultType := ResultType;
   fmandelbortMap.Start;
 
@@ -536,8 +539,29 @@ begin
   dfax:=farx * farx;
 
 
-  for iy:=0 to maxmh - 1 do begin
-    line := b.ScanLine[iy];
+
+ case ResultType of
+   rtBmp:
+    begin
+     TBitmap(bmp).PixelFormat:=pf32bit;
+     TBitmap(bmp).SetSize(fWidth,fHeight);
+    end;
+   rtBmp32:
+     TBitmap32(bmp).SetSize(fWidth,fHeight);
+   rtFastDIB:
+     TFastDib(bmp).SetSize(fWidth, fHeight, 32);
+ end;
+
+
+
+  for iy:=0 to maxmh - 1 do
+  begin
+
+    case ResultType of
+      rtBmp: line := TBitmap(bmp).ScanLine[iy];
+      rtBmp32: line := TBitmap32(bmp).ScanLine[iy];
+      rtFastDIB: line := TFastDIB(bmp).Pixels32[iy];
+    end;
 
     if(fApproxResolution >= 1)then
     begin
@@ -555,34 +579,16 @@ begin
         ColorSheme.GradientFloat[widx - g_mandelbrot_skip].g,
         ColorSheme.GradientFloat[widx - g_mandelbrot_skip].b,
         ColorSheme.GradientFloat[widx - g_mandelbrot_skip].a
-
       );
     end;
   end;
 
- case fResultType of
-   rtBmp: fbitmap := b;
-   rtBmp32: begin
-             fbitmap32 := TBitmap32.Create;
-             fbitmap32.SetSize(b.Width, b.Height);
-             fbitmap32.Assign(b);
-             freeAndNil(b);
-            end;
-   rtFastDIB: begin
-               fFastDib := TFastDIB.Create(fbuffer_w, fbuffer_h, 32);
-               Bitmap2FastDIB(b,fFastDib);
-               freeAndNil(b);
-              end;
- end;
-
-//  b.Free;
-
   FreeMem(po);
 end;
 
-procedure TFractal.QualityDraw(const ResultType: TResultType = rtBmp32);
+procedure TFractal.QualityDraw(bmp: TObject; const ResultType: TResultType = rtBmp32);
 var
- bmp: TBitmap;
+// bmp: TBitmap;
  tmpp, tmpo:PTraceMap;
  fmandelbortMap: TMandelbrotMap;
  finterpolate: TInterpolate;
@@ -598,6 +604,7 @@ begin
   if((1 / fAntialiasing) > 1)then  exit;
 
   farx := round(fAntialiasing);
+
   fRoundHeight := Round(fbuffer_h) * farx;
   fRoundWidth := Round(fbuffer_w) * farx;
   fPixelUnit := 1024 * farx;
@@ -606,7 +613,7 @@ begin
 
   ResetEvent(fFinishedEvent);
 
-  fmandelbortMap := TMandelbrotMap.Create(self, tmpp, fbuffer_w, fbuffer_h, fPixelUnit, 1024, fxstart, fystart,  fzscale, 1 / fAntialiasing , fDepth);
+  fmandelbortMap := TMandelbrotMap.Create(self, tmpp, fRoundWidth, fRoundHeight, fPixelUnit, fPixelUnit, fxstart, fystart,  fzscale, fDepth);
   fResultType := ResultType;
   fmandelbortMap.Start;
 
@@ -631,13 +638,13 @@ begin
 
   FreeMem(tmpo);
 
-  fractal_map_adjust(fmap, fbuffer_w, fbuffer_h, buffer_val_min, buffer_val_max);
+//  fractal_map_adjust(fmap, fbuffer_w, fbuffer_h, buffer_val_min, buffer_val_max);
 
- bmp := TBitmap.Create;
+// bmp := TBitmap.Create;
 
  ResetEvent(fFinishedEvent);
 
- frasterize := TRasterizer.Create(bmp, fmap, ColorSheme.GradientFloat, fbuffer_w, fbuffer_h, fSkip);
+ frasterize := TRasterizer.Create(bmp, ResultType, fmap, ColorSheme.GradientFloat, fbuffer_w, fbuffer_h, fSkip);
  frasterize.Start;
  if WaitForSingleObject(fFinishedEvent, cTimeOut ) = WAIT_TIMEOUT then
  begin
@@ -647,7 +654,7 @@ begin
  end;
 
  ResetEvent(fFinishedEvent);
-
+{
  case fResultType of
    rtBmp: fbitmap := bmp;
    rtBmp32: begin
@@ -660,7 +667,7 @@ begin
                Bitmap2FastDIB(bmp,fFastDib);
                freeAndNil(bmp);
               end;
- end;
+ end;}
 // freemem(fmap0);
 end;
 
@@ -710,10 +717,11 @@ end;
 
 { TRasterizer }
 
-constructor TRasterizer.Create(bmp:TBitmap; map:PTraceMap; cl_gradiento_float: PGradientoFloat; const width,height, zskip:Longint);
+constructor TRasterizer.Create(bmp:TObject; resType: TresultType; map:PTraceMap; cl_gradiento_float: PGradientoFloat; const width,height, zskip:Longint);
 begin
  fbmp := bmp;
  fmap := map;
+ fresType := resType;
  fcl_gradiento_float := cl_gradiento_float;
  fwidth := width;
  fheight := height;
@@ -722,7 +730,7 @@ begin
  inherited Create(True);
 end;
 
-procedure TRasterizer.fractal_map_rasterize(b: TBitmap; map: PTraceMap; cl_gradiento_float: PGradientoFloat; w, h,
+procedure TRasterizer.fractal_map_rasterize(b: TObject; map: PTraceMap; cl_gradiento_float: PGradientoFloat; w, h,
   zskip: Integer);
 var i, j: Longint;
 line:Pointer;
@@ -744,6 +752,36 @@ begin
   //размеры карты для правильной работы опять же должны быть кратны четырем
   //похоже что у строк битмапа адреса всегда выровнены по 16
   //в таком случае, нам даже не нужно думать
+
+ case fresType of
+   rtBmp:
+    begin
+     TBitmap(b).PixelFormat:=pf32bit;
+     TBitmap(b).SetSize(w,h);
+    end;
+   rtBmp32:
+     TBitmap32(b).SetSize(w,h);
+   rtFastDIB:
+     TFastDib(b).SetSize(w, h, 32);
+ end;
+
+  for j := 0 to h - 1 do
+  begin
+     case fresType of
+       rtBmp: line :=  TBitmap(b).ScanLine[j];
+       rtBmp32: line := TBitmap32(b).ScanLine[j];
+       rtFastDIB: line := TFastDib(b).Pixels32[j];
+     end;
+    wy := w * j;
+
+    //дальше делаем цикл
+    asm
+      {$I inc\renderer_fast.asm}
+    end;
+
+  end;
+
+(*
   b.PixelFormat:=pf32bit;
 
   b.Width:=w;
@@ -759,7 +797,7 @@ begin
       {$I inc\renderer_fast.asm}
     end;
 
-  end;
+  end;*)
 end;
 
 procedure TRasterizer.Execute;
@@ -792,18 +830,35 @@ var
   darx:Longint;
   i, j, li, lj, jss, jsm: Longint;
   acc: Single;
+  b: tbitmap;
 begin
  try
-  //èíòåðïîëèðóåì
-  for j:=0 to fheight - 1 do begin
+  darx := ffarx * ffarx;
+
+{  b:= TBitmap.Create;
+  b.SetSize(fwidth * 2, fheight * 2);
+  for j:=0 to fheight * 2 - 1 do
+  begin
+    jsm := j * fwidth;
+    for i:=0 to fwidth * 2 - 1 do
+    begin
+       b.Canvas.Pixels[i,j] := Round(ftmp_map[jsm + i]);
+    end;
+  end;
+  b.SaveToFile('c:\1.bmp');
+}
+
+
+  for j:=0 to fheight - 1 do
+  begin
 
     jsm := j * fwidth;
 
-    for i:=0 to fwidth - 1 do begin
+    for i:=0 to fwidth - 1 do
+    begin
 
       acc:=0;
 
-      //èùåì ñðåäíèå çíà÷åíèÿ êâàäðàòà
       for lj := j * ffarX to j * ffarX + ffarX - 1 do begin
 
         jss := lj * fRoundWidth;
@@ -812,10 +867,12 @@ begin
           acc := acc + ftmp_map[jss + li];
         end;
       end;
-       darx := ffarx * ffarx;
       fmap[jsm + i] := acc / darx;
+
     end;
+
   end;
+
  finally
   setEvent(fFinishedEvent);
  end;
