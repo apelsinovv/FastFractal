@@ -1,9 +1,9 @@
-object Form1: TForm1
+object MainForm: TMainForm
   Left = 0
   Top = 0
   Caption = 'Fractal Fantasy'
   ClientHeight = 473
-  ClientWidth = 889
+  ClientWidth = 895
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -20,7 +20,7 @@ object Form1: TForm1
     Left = 0
     Top = 41
     Width = 720
-    Height = 432
+    Height = 426
     Align = alClient
     Bitmap.ResamplerClassName = 'TNearestResampler'
     BitmapAlign = baCustom
@@ -33,15 +33,17 @@ object Form1: TForm1
     ShowHint = False
     OverSize = 0
     TabOrder = 0
+    ExplicitWidth = 712
   end
   object Panel1: TPanel
     Left = 0
     Top = 0
-    Width = 889
+    Width = 895
     Height = 41
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 1
+    ExplicitWidth = 889
     object Label1: TLabel
       Left = 99
       Top = 2
@@ -109,9 +111,9 @@ object Form1: TForm1
       Width = 68
       Height = 21
       Style = csDropDownList
-      ItemIndex = 0
+      ItemIndex = 1
       TabOrder = 1
-      Text = '1'
+      Text = '2'
       OnChange = cbApproxChange
       Items.Strings = (
         '1'
@@ -167,8 +169,8 @@ object Form1: TForm1
   object Panel2: TPanel
     Left = 720
     Top = 41
-    Width = 169
-    Height = 432
+    Width = 175
+    Height = 426
     Align = alRight
     BevelOuter = bvNone
     TabOrder = 2
@@ -199,13 +201,6 @@ object Form1: TForm1
       Width = 33
       Height = 13
       Caption = 'Depth:'
-    end
-    object Label10: TLabel
-      Left = 16
-      Top = 416
-      Width = 37
-      Height = 13
-      Caption = 'Label10'
     end
     object XSpin: TJvSpinEdit
       Left = 42
@@ -272,5 +267,21 @@ object Form1: TForm1
       TabOrder = 5
       OnClick = chbQualityClick
     end
+  end
+  object ProgressBar1: TProgressBar
+    Left = 0
+    Top = 467
+    Width = 895
+    Height = 6
+    Align = alBottom
+    TabOrder = 3
+    ExplicitTop = 468
+    ExplicitWidth = 889
+  end
+  object Timer1: TTimer
+    Interval = 500
+    OnTimer = Timer1Timer
+    Left = 720
+    Top = 8
   end
 end

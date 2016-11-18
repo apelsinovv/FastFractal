@@ -6,10 +6,10 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, UFractal, Vcl.StdCtrls, Vcl.ExtCtrls,
   GR32_Image, GR32, GR32_Layers, JvFullColorSpaces, JvExStdCtrls, JvCombobox, JvFullColorCtrls,
-  Vcl.Buttons, Vcl.Mask, JvExMask, JvSpin, math;
+  Vcl.Buttons, Vcl.Mask, JvExMask, JvSpin, math, Vcl.ComCtrls, syncobjs;
 
 type
-  TForm1 = class(TForm)
+  TMainForm = class(TForm)
     ImgView: TImgView32;
     Panel1: TPanel;
     Panel2: TPanel;
@@ -34,7 +34,8 @@ type
     Label9: TLabel;
     Edit1: TEdit;
     chbQuality: TCheckBox;
-    Label10: TLabel;
+    ProgressBar1: TProgressBar;
+    Timer1: TTimer;
     procedure FormCreate(Sender: TObject);
     procedure XSpinChange(Sender: TObject);
     procedure YSpinChange(Sender: TObject);
@@ -46,6 +47,7 @@ type
     procedure ScrollBarDepthChange(Sender: TObject);
     procedure cbApproxChange(Sender: TObject);
     procedure chbQualityClick(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
   private
      pdx, pdy, ccx, ccy:Double;//Longint;
      is_dragged: LongBool;
@@ -57,7 +59,8 @@ type
       fQuality: Boolean;
       FSelection: TPositionedLayer;
       RBLayer: TRubberbandLayer;
-
+      fDrawCS: TCriticalSection;
+      fRedrawIntervalStart: Cardinal;
     procedure onLMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure onLMouseUp(Sender: TObject; Button: TMouseButton;
@@ -65,8 +68,10 @@ type
     procedure onLMouseMove(Sender: TObject; Shift: TShiftState;
                            X, Y: Integer);
 
+    procedure build_fractal_progress(var message: Tmessage); message WM_FRACTAL_PROGRESS;
+    procedure Draw(Quality: Boolean = false);
+    procedure OnDrawFinish(sender: TObject);
     procedure SetSelection(Value: TPositionedLayer);
-    procedure Redraw(const FQoality:  Boolean = False);
     procedure setPosx(const Value: Double);
     procedure setPosy(const Value: Double);
     procedure setScale(const Value: Double);
@@ -77,10 +82,25 @@ type
 
   public
     { Public declarations }
+
   end;
 
+  TDrawer = class(TThread)
+  private
+   fOwnerForm: TMainForm;
+   fQuality: Boolean;
+   procedure Redraw;
+  protected
+   procedure execute; override;
+
+  public
+   constructor Create(AOwner: TMainForm; onTerm: TNotifyEvent; const Quality:  Boolean = False);
+  end;
+
+
+
 var
-  Form1: TForm1;
+  MainForm: TMainForm;
   fractal: TFractal;
 
   const
@@ -102,75 +122,13 @@ implementation
 
 {$R *.dfm}
 
-procedure TForm1.Redraw(const FQoality: Boolean = False);
-var
- layer: TBitmapLayer;
- P: TPoint;
- W, H: Single;
-begin
 
- fractal.Width := Cimg_size[cbResolution.ItemIndex].X;
- fractal.Height := Cimg_size[cbResolution.ItemIndex].Y;
- fractal.ApproxResolution := cApporox[cbApprox.ItemIndex];
- fractal.Antialiasing := cAntialias[cbAntialias.ItemIndex];
- fractal.Depth := StrToInt(Edit1.Text);
- fractal.ColorSheme.SelectedIndex := cbColorSheme.ItemIndex;
- fractal.XPos := fposx;
- fractal.YPos := fposy;
- fractal.ZScale := fscale;
-
-  with ImgView do
-  begin
-   if Layers.Count = 0 then
-   begin
-     layer := TBitmapLayer.Create(ImgView.Layers);
-     layer.OnMouseDown := onLMouseDown;
-     layer.OnMouseMove := onLMouseMove;
-     layer.OnMouseUp := onLMouseUp;
-   end else
-     layer := TBitmapLayer(Selection);
-    with layer do
-    begin
-      w := fractal.Width * 0.5;
-      h := fractal.Height * 0.5;
-
-      with ImgView.GetViewportRect do
-          P := ImgView.ControlToBitmap(Point(Width div 2, Height div 2));
-      with ImgView.Bitmap do
-       Location := GR32.FloatRect(P.X - w, P.Y - h, P.X + w, P.Y + h);
-      Scaled := True;
-    end;
-
-    Selection := layer;
-//    Layers.Clear;
-    Scale := 1;
-//    Bitmap := fractal.ResultBitmap32;
-//    Bitmap.SetSize(fractal.ResultBitmap32.Width, fractal.ResultBitmap32.Height);
-//    Bitmap.Clear(clBlack32);
-//    Bitmap.Assign(fractal.ResultBitmap32);
-  end;
-
-
- if FQoality then
- begin
-  fractal.QualityDraw(layer.Bitmap)
- end else
- begin
-  fractal.PreviewDraw(layer.Bitmap);
-//    layer.Bitmap.Assign(fractal.ResultBitmap32);
- end;
-
-// if assigned(fractal.ResultBitmap32) then
-// begin
-// end;
-end;
-
-procedure TForm1.ScrollBarDepthChange(Sender: TObject);
+procedure TMainForm.ScrollBarDepthChange(Sender: TObject);
 begin
  Edit1.Text := IntToStr(ScrollBarDepth.Position);
 end;
 
-procedure TForm1.setPosx(const Value: Double);
+procedure TMainForm.setPosx(const Value: Double);
 begin
   if Value<>fposx  then
   begin
@@ -181,7 +139,7 @@ begin
   end;
 end;
 
-procedure TForm1.setPosy(const Value: Double);
+procedure TMainForm.setPosy(const Value: Double);
 begin
   if Value<>fposy  then
   begin
@@ -192,7 +150,7 @@ begin
   end;
 end;
 
-procedure TForm1.setScale(const Value: Double);
+procedure TMainForm.setScale(const Value: Double);
 begin
   if Value<>fscale  then
   begin
@@ -204,61 +162,63 @@ begin
 
 end;
 
-procedure TForm1.SetSelection(Value: TPositionedLayer);
+procedure TMainForm.SetSelection(Value: TPositionedLayer);
 begin
   if Value <> FSelection then
-  begin
-{    if RBLayer <> nil then
-    begin
-      RBLayer.ChildLayer := nil;
-      RBLayer.LayerOptions := LOB_NO_UPDATE;
-      ImgView.Invalidate;
-    end;
-}
      FSelection := Value;
-
-{    if Value <> nil then
-    begin
-      if RBLayer = nil then
-      begin
-        RBLayer := TRubberBandLayer.Create(ImgView.Layers);
-        RBLayer.MinHeight := 1;
-        RBLayer.MinWidth := 1;
-      end
-      else RBLayer.BringToFront;
-      RBLayer.ChildLayer := Value;
-      RBLayer.LayerOptions := LOB_VISIBLE or LOB_MOUSE_EVENTS or LOB_NO_UPDATE;
-      RBLayer.OnResizing := RBResizing;
-
-      if Value is TBitmapLayer then
-        with TBitmapLayer(Value) do
-        begin
-          pnlBitmapLayer.Visible := True;
-          LayerOpacity.Position := Bitmap.MasterAlpha;
-          LayerInterpolate.Checked := Bitmap.Resampler.ClassType = TDraftResampler;
-        end
-}
-  end;
-
 end;
 
-procedure TForm1.cbApproxChange(Sender: TObject);
+procedure TMainForm.Timer1Timer(Sender: TObject);
+var
+ drwintrv: Cardinal;
+ ar: double;
 begin
- Redraw(fQuality);
+  drwintrv := (GetTickCount - fRedrawIntervalStart);
+ if (drwintrv > (1000 * 4)) and (drwintrv < (1000 * 4 + 500)) then
+ begin
+  ar := fractal.ApproxResolution;
+  fractal.ApproxResolution := 1;
+   draw(True);
+  sleep(10);
+//  fractal.ApproxResolution := ar;
+ end;
 end;
 
-procedure TForm1.chbQualityClick(Sender: TObject);
+procedure TMainForm.build_fractal_progress(var message: Tmessage);
+begin
+
+  ProgressBar1.Position:=ProgressBar1.Max - message.WParam;
+
+end;
+
+procedure TMainForm.cbApproxChange(Sender: TObject);
+begin
+ Draw(fQuality);
+ if not fQuality then
+   fRedrawIntervalStart := GetTickCount;
+
+end;
+
+procedure TMainForm.chbQualityClick(Sender: TObject);
 begin
  fQuality := chbQuality.Checked;
- Redraw(fQuality);
+ Draw(fQuality);
 end;
 
-procedure TForm1.Edit1Change(Sender: TObject);
+procedure TMainForm.Draw(Quality: Boolean);
+var
+ fdrawer: TDrawer;
+begin
+ fdrawer := TDrawer.Create(self, OnDrawFinish, Quality);
+
+end;
+
+procedure TMainForm.Edit1Change(Sender: TObject);
 begin
  fractal.Depth := StrToInt(Edit1.Text);
 end;
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TMainForm.FormCreate(Sender: TObject);
 var
   ci: TColorSItem;
   Layer: TBitmapLayer;
@@ -270,12 +230,8 @@ begin
  scale := 0.20736000;
  fQuality := False;
 
-//  Application.HintColor := clGrayText;
-  Application.HintPause := 250;
-  Application.HintHidePause := 9000;
 
-
- fractal := TFractal.Create;
+ fractal := TFractal.Create(self);
  fractal.Width := cImg_size[1].X;
  fractal.Height := cImg_size[1].Y;
  fractal.XPos := posx;
@@ -300,14 +256,20 @@ begin
   cbColorSheme.Items.Add(fractal.ColorSheme.Colorshemas.Items[i].Name);
  cbColorSheme.ItemIndex := fractal.ColorSheme.SelectedIndex;
  ImgView.SetupBitmap(True, clWhite32);
+
+ fDrawCS := TCriticalSection.Create;
 end;
 
-procedure TForm1.FormMouseWheel(Sender: TObject; Shift: TShiftState;
+procedure TMainForm.FormMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
-var ns, ds:Double;
+var
+ ns, ds:Double;
+ px, py: double;
 begin
 
     Handled:=True;
+    px := posx;
+    py := posy;
 
     ns:=scale * power(1.2, (WheelDelta / 120));
     ds := 1/scale - 1/ns;
@@ -317,22 +279,31 @@ begin
     posy:=posy + ds * (ccy / 1024);
 
 
-    inc(n_nodraw);
-    Application.ProcessMessages;
-    dec(n_nodraw);
+//    inc(n_nodraw);
+//    Application.ProcessMessages;
+//    dec(n_nodraw);
 
-    if(n_nodraw = 0)then
-      Redraw(fQuality)
-
+   if (posx <> px) and (posy <> py) then
+   begin
+      Draw(fQuality);
+    if not fQuality then
+     fRedrawIntervalStart := GetTickCount;
+   end;
 
 end;
 
-procedure TForm1.FormShow(Sender: TObject);
+procedure TMainForm.FormShow(Sender: TObject);
 begin
- Redraw(fQuality);
+ Draw(True);
 end;
 
-procedure TForm1.onLMouseDown(Sender: TObject; Button: TMouseButton;
+procedure TMainForm.OnDrawFinish(sender: TObject);
+begin
+ ProgressBar1.Position := 0;
+ ImgView.Repaint;
+end;
+
+procedure TMainForm.onLMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
  fx, fy: Double;
@@ -347,7 +318,7 @@ begin
   end;
 end;
 
-procedure TForm1.onLMouseMove(Sender: TObject; Shift: TShiftState;
+procedure TMainForm.onLMouseMove(Sender: TObject; Shift: TShiftState;
                                 X, Y: Integer);
 var
  fx, fy: Double;
@@ -358,7 +329,6 @@ begin
 
     ccx:=fx;//x;
     ccy:=fy;//y;
-//    Label10.Caption := 'X = ' + IntToStr(x) + '; Y = ' + IntToStr(Y);
 
     if(is_dragged)then
     begin
@@ -372,13 +342,13 @@ begin
       Application.ProcessMessages;
       dec(n_nodraw);
 
-      if(n_nodraw = 0)then begin
-        Redraw(fQuality);
-      end;
+//      if(n_nodraw = 0)then begin
+//        Draw(fQuality);
+//      end;
     end;
 end;
 
-procedure TForm1.onLMouseUp(Sender: TObject; Button: TMouseButton;
+procedure TMainForm.onLMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
  fx, fy: Double;
@@ -387,24 +357,107 @@ begin
     fy := Y - (TPositionedLayer(selection).GetAdjustedLocation.Top);
     pdx:=fX;
     pdy:=fY;
-    if(Button = mbLeft)then begin
+    if(Button = mbLeft)then
+    begin
       is_dragged:=False;
+       Draw(fQuality);
+      if not fQuality then
+        fRedrawIntervalStart := GetTickCount;
     end;
 end;
 
-procedure TForm1.XSpinChange(Sender: TObject);
+procedure TMainForm.XSpinChange(Sender: TObject);
 begin
  fposx := XSpin.Value;
 end;
 
-procedure TForm1.YSpinChange(Sender: TObject);
+procedure TMainForm.YSpinChange(Sender: TObject);
 begin
   fposy := YSpin.Value;
 end;
 
-procedure TForm1.ZSpinChange(Sender: TObject);
+procedure TMainForm.ZSpinChange(Sender: TObject);
 begin
  fscale := ZSpin.Value;
+end;
+
+{ TDrawer }
+
+constructor TDrawer.Create(AOwner: TMainForm; onTerm: TNotifyEvent; const Quality: Boolean);
+begin
+  fOwnerForm := AOwner;
+  fQuality := Quality;
+  FreeOnTerminate := true;
+  OnTerminate := onTerm;
+  inherited Create(False);
+end;
+
+procedure TDrawer.Redraw;
+var
+ layer: TBitmapLayer;
+ P: TPoint;
+ W, H: Single;
+begin
+ if not assigned(fOwnerForm) then Exit;
+ with fOwnerForm do
+ begin
+  fDrawCS.Acquire;
+  try
+   ProgressBar1.Position:=0;
+   ProgressBar1.Max:= Cimg_size[cbResolution.ItemIndex].Y;
+   fractal.Width := Cimg_size[cbResolution.ItemIndex].X;
+   fractal.Height := Cimg_size[cbResolution.ItemIndex].Y;
+   fractal.ApproxResolution := cApporox[cbApprox.ItemIndex];
+   fractal.Antialiasing := cAntialias[cbAntialias.ItemIndex];
+   fractal.Depth := StrToInt(Edit1.Text);
+   fractal.ColorSheme.SelectedIndex := cbColorSheme.ItemIndex;
+   fractal.XPos := fposx;
+   fractal.YPos := fposy;
+   fractal.ZScale := fscale;
+
+    with ImgView do
+    begin
+     if Layers.Count = 0 then
+     begin
+       layer := TBitmapLayer.Create(ImgView.Layers);
+       layer.OnMouseDown := onLMouseDown;
+       layer.OnMouseMove := onLMouseMove;
+       layer.OnMouseUp := onLMouseUp;
+     end else
+       layer := TBitmapLayer(Selection);
+      with layer do
+      begin
+        w := fractal.Width * 0.5;
+        h := fractal.Height * 0.5;
+
+        with ImgView.GetViewportRect do
+            P := ImgView.ControlToBitmap(Point(Width div 2, Height div 2));
+        with ImgView.Bitmap do
+         Location := GR32.FloatRect(P.X - w, P.Y - h, P.X + w, P.Y + h);
+        Scaled := True;
+      end;
+
+      Selection := layer;
+      Scale := 1;
+    end;
+
+
+   if fQuality then
+   begin
+    fractal.QualityDraw(layer.Bitmap)
+   end else
+   begin
+    fractal.PreviewDraw(layer.Bitmap);
+   end;
+  finally
+    fDrawCS.Release;
+  end;
+ end;
+end;
+
+procedure TDrawer.execute;
+begin
+  Redraw;
 end;
 
 end.

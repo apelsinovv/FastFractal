@@ -20,6 +20,8 @@ UITypes;
 const
   cTimeOut = 1000 * 60 * 60 * 24;
 
+  WM_FRACTAL_PROGRESS = WM_USER + 1;
+
 type
 
   TTraceBufferHeader = packed record
@@ -118,19 +120,20 @@ type
    fGradientoFloat0: PGradientoFloat;
    fGradientoFloat: PGradientoFloat;
    fColorshemas: TList<TColorSItem>;
-//   fDefaultIndex: Integer;
    fSelectedIndex: Integer;
    fInterpolation: TInterpolation;
    fMandelbrotDepth: LongInt;
    procedure reinit_color_factor(const index, lerp_len: Integer);
    procedure SetDefaultColorSheme;
+  private
+    procedure SetSelectedIndex(const Value: Integer);
   protected
    destructor Destroy; override;
   public
    constructor Create(const SetDefaultColors: Boolean = true);
    function Compile(const index: Integer): PGradientoFloat;
    property Colorshemas: TList<TColorSItem> read fColorshemas;
-   property SelectedIndex: Integer read fSelectedIndex write fSelectedIndex;
+   property SelectedIndex: Integer read fSelectedIndex write SetSelectedIndex;
    property GradientFloat: PGradientoFloat read fGradientoFloat;
    property Interpolation: TInterpolation read fInterpolation write fInterpolation;
    property FractalDepth: LongInt read fMandelbrotDepth;
@@ -169,10 +172,14 @@ type
   end;
 
 
+
+
+
   TIntFunction = function(a, b, k:Double):Double;
 
   TFractal = class
   private
+   fOwner: TWinControl;
    fColorSheme: TColorSheme;
    fxstart,fystart, fzscale:Double;
    fApproxResolution: Single;
@@ -191,13 +198,6 @@ type
    fbuffer_val_max:Longint;
    pref_freq: Int64;
 
-//   fcl_gradiento_float0:PGradientoFloat;
-//   fcl_gradiento_float:PGradientoFloat;
-
-//   fcl_gradiento_buffer:array[0 .. 65536]of TRGBAF;
-//   fcl_gradiento_maxi:Longint;
-//   fcl_gradiento_default:Longint;
-
    fbitmap: TBitmap;
    fBitmap32: TBitmap32;
    fFastDib: TFastDIB;
@@ -207,10 +207,6 @@ type
    fmap0:PTraceMap;
    fmap:PTraceMap;
 
-//   fcl_lerp_factor:PLerpTagArray;
-//   fcl_lerp_factor_len:Longint;
-
-//   g_mandelbrot_depth:Longint;
    g_mandelbrot_skip:Longint;
 
    fqdrawFlag: Boolean;
@@ -222,7 +218,7 @@ type
   protected
    destructor Destroy; override;
   public
-   constructor Create;
+   constructor Create(AOwner: TWinControl);
 
    procedure PreviewDraw(bmp: TObject; const ResultType: TResultType = rtBmp32);
    procedure QualityDraw(bmp: TObject; const ResultType: TResultType = rtBmp32);
@@ -233,7 +229,6 @@ type
    property ApproxResolution: Single read fApproxResolution write fApproxResolution;
    property Antialiasing: LongInt read fAntialiasing write fAntialiasing;
    property Resolution: LongInt read fResolution write fResolution;
-//   property Interpolation: TInterpolation read fInterpolation write fInterpolation;
    property Depth: LongInt read fDepth write fDepth;
    property ColorSkip: LongInt read fSkip write fSkip;
    property Height: LongInt read fHeight write fHeight;
@@ -323,12 +318,9 @@ end;
 
 
 class function TMandelbrotMap.cb_progress(sender:TObject; p: Integer): LongBool;
-var
- res: integer;
 begin
-   res := TFractal(sender).fDepth;
  //
-// PostMessage(
+ PostMessage(TFractal(sender).fOwner.Handle, WM_FRACTAL_PROGRESS, p, 0);
 //  Form1.ProgressBar1.Position:=Form1.ProgressBar1.Max - p;
 
   result:=GetAsyncKeyState(VK_ESCAPE) < 0;
@@ -375,14 +367,10 @@ begin
   aligned_get_mem(Pointer((@fmap0)^), Pointer((@fmap)^), w * h * 4, 16);
 end;
 
-constructor TFractal.Create;
+constructor TFractal.Create(AOwner: TWinControl);
 var pnull:Pointer;
 begin
-  randomize;
-  Set8087CW($1FF);
-  SetErrorMode(SEM_NOOPENFILEERRORBOX or SEM_NOGPFAULTERRORBOX or SEM_NOALIGNMENTFAULTEXCEPT or SEM_FAILCRITICALERRORS);
-  QueryPerformanceFrequency(pref_freq);
-
+  fOwner := AOwner;
  g_mandelbrot_skip := 0;
  fAntialiasing := 1;
  fqdrawFlag := False;
@@ -430,8 +418,6 @@ begin
     FreeMem(fmap0);
     fmap0 := nil;
   end;
-// if assigned(fcl_gradiento_float) then
-//  FreeMem(fcl_gradiento_float);
  if assigned(fColorSheme) then
   FreeAndNil(fColorSheme);
   inherited;
@@ -443,11 +429,9 @@ end;
 procedure TFractal.PreviewDraw(bmp: TObject; const ResultType: TResultType);
 var map:PTraceMap;
 po:Pointer;
-//b: TBitmap;
 ix, iy:Longint;
 line: Pointer;
 pixel, l_pixel:PRGBA;
-//z:TComplex;
 t0, t1:Double;
 zmw:Longint;
 zmh:Longint;
@@ -493,19 +477,6 @@ begin
 
   aligned_get_mem(po, Pointer(map), zmw * zmh * sizeof(single), 16);
 
-{  b:=TBitmap.Create;
-
-  b.PixelFormat:=pf32bit;
-
-  b.Width:=maxmw;
-  b.Height:=maxmh;
-}
-
-  //ProgressBar1.Max:=zmh;
-  //ProgressBar1.Position:=0;
-
-
-//  fractal_mandelbrot_fast(map, ColorSheme.FractalDepth + g_mandelbrot_skip, zmw, zmh, zmz, zmz, fxstart, fystart, fzscale);
   ResetEvent(fFinishedEvent);
   fmandelbortMap := TMandelbrotMap.Create(self, map, zmw, zmh, zmz, zmz, fxstart, fystart,  fzscale,  ColorSheme.FractalDepth + g_mandelbrot_skip);
   fResultType := ResultType;
@@ -518,7 +489,6 @@ begin
     exit;
   end;
 
-//    fractal_map_adjust(map,zmw, zmh, buffer_val_min, buffer_val_max);
 
 
   g_mandelbrot_skip := ColorSheme.FractalDepth + g_mandelbrot_skip;
@@ -588,7 +558,6 @@ end;
 
 procedure TFractal.QualityDraw(bmp: TObject; const ResultType: TResultType = rtBmp32);
 var
-// bmp: TBitmap;
  tmpp, tmpo:PTraceMap;
  fmandelbortMap: TMandelbrotMap;
  finterpolate: TInterpolate;
@@ -638,9 +607,6 @@ begin
 
   FreeMem(tmpo);
 
-//  fractal_map_adjust(fmap, fbuffer_w, fbuffer_h, buffer_val_min, buffer_val_max);
-
-// bmp := TBitmap.Create;
 
  ResetEvent(fFinishedEvent);
 
@@ -654,21 +620,6 @@ begin
  end;
 
  ResetEvent(fFinishedEvent);
-{
- case fResultType of
-   rtBmp: fbitmap := bmp;
-   rtBmp32: begin
-             fbitmap32 := TBitmap32.Create;
-             fbitmap32.Assign(bmp);
-             freeAndNil(bmp);
-            end;
-   rtFastDIB: begin
-               fFastDib := TFastDIB.Create(fbuffer_w, fbuffer_h, 32);
-               Bitmap2FastDIB(bmp,fFastDib);
-               freeAndNil(bmp);
-              end;
- end;}
-// freemem(fmap0);
 end;
 
 
@@ -773,6 +724,7 @@ begin
        rtFastDIB: line := TFastDib(b).Pixels32[j];
      end;
     wy := w * j;
+    if Terminated then Exit;
 
     //дальше делаем цикл
     asm
@@ -835,19 +787,6 @@ begin
  try
   darx := ffarx * ffarx;
 
-{  b:= TBitmap.Create;
-  b.SetSize(fwidth * 2, fheight * 2);
-  for j:=0 to fheight * 2 - 1 do
-  begin
-    jsm := j * fwidth;
-    for i:=0 to fwidth * 2 - 1 do
-    begin
-       b.Canvas.Pixels[i,j] := Round(ftmp_map[jsm + i]);
-    end;
-  end;
-  b.SaveToFile('c:\1.bmp');
-}
-
 
   for j:=0 to fheight - 1 do
   begin
@@ -859,11 +798,15 @@ begin
 
       acc:=0;
 
-      for lj := j * ffarX to j * ffarX + ffarX - 1 do begin
+      for lj := j * ffarX to j * ffarX + ffarX - 1 do
+      begin
 
         jss := lj * fRoundWidth;
 
-        for li := i * ffarX to i * ffarX + ffarX - 1 do begin
+        for li := i * ffarX to i * ffarX + ffarX - 1 do
+        begin
+          if Terminated then exit;
+
           acc := acc + ftmp_map[jss + li];
         end;
       end;
@@ -988,6 +931,15 @@ begin
  Compile(0);
 end;
 
+procedure TColorSheme.SetSelectedIndex(const Value: Integer);
+begin
+  if fSelectedIndex <> Value then
+  begin
+   fSelectedIndex := Value;
+   Compile(Value);
+  end;
+end;
+
 function TColorSheme.Compile(const index: Integer): PGradientoFloat;
 var i:longint;
  fico:Longint;
@@ -1052,5 +1004,11 @@ begin
  b := _b;
  llength := _llength;
 end;
+
+initialization
+  randomize;
+  Set8087CW($1FF);
+  SetErrorMode(SEM_NOOPENFILEERRORBOX or SEM_NOGPFAULTERRORBOX or SEM_NOALIGNMENTFAULTEXCEPT or SEM_FAILCRITICALERRORS);
+//  QueryPerformanceFrequency(pref_freq);
 
 end.
