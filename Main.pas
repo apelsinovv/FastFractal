@@ -1,4 +1,4 @@
-unit Unit1;
+unit Main;
 
 interface
 
@@ -36,6 +36,8 @@ type
     chbQuality: TCheckBox;
     ProgressBar1: TProgressBar;
     Timer1: TTimer;
+    Button1: TButton;
+    Button2: TButton;
     procedure FormCreate(Sender: TObject);
     procedure XSpinChange(Sender: TObject);
     procedure YSpinChange(Sender: TObject);
@@ -48,8 +50,12 @@ type
     procedure cbApproxChange(Sender: TObject);
     procedure chbQualityClick(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure SpeedButton1Click(Sender: TObject);
   private
      pdx, pdy, ccx, ccy:Double;//Longint;
+     hcx, hcy: Double;
      is_dragged: LongBool;
      is_hqual:LongBool;
       n_nodraw:LongInt;
@@ -120,6 +126,7 @@ var
 
 implementation
 
+uses uSetColor;
 {$R *.dfm}
 
 
@@ -168,6 +175,13 @@ begin
      FSelection := Value;
 end;
 
+procedure TMainForm.SpeedButton1Click(Sender: TObject);
+begin
+ ColorForm := TColorForm.Create(self);
+ ColorForm.ShowModal;
+ FreeAndNil(ColorForm);
+end;
+
 procedure TMainForm.Timer1Timer(Sender: TObject);
 var
  drwintrv: Cardinal;
@@ -189,6 +203,41 @@ begin
 
   ProgressBar1.Position:=ProgressBar1.Max - message.WParam;
 
+end;
+
+procedure TMainForm.Button1Click(Sender: TObject);
+var
+ ns, ds:Double;
+begin
+
+    ns:=scale * power(1.2, 1);
+    ds := 1/scale - 1/ns;
+    scale:=ns;
+
+    posx:=posx  + ds * (hcx / 1024);
+    posy:=posy + ds * (hcy / 1024);
+
+    Draw(fQuality);
+    if not fQuality then
+     fRedrawIntervalStart := GetTickCount;
+
+end;
+
+procedure TMainForm.Button2Click(Sender: TObject);
+var
+ ns, ds:Double;
+begin
+
+    ns:=scale * power(1.2, -1);
+    ds := 1/scale - 1/ns;
+    scale:=ns;
+
+    posx:=posx  + ds * (hcx / 1024);
+    posy:=posy + ds * (hcy / 1024);
+
+    Draw(fQuality);
+    if not fQuality then
+     fRedrawIntervalStart := GetTickCount;
 end;
 
 procedure TMainForm.cbApproxChange(Sender: TObject);
@@ -312,6 +361,7 @@ begin
     fy := Y - (TPositionedLayer(selection).GetAdjustedLocation.Top);
   pdx:=fX;
   pdy:=fY;
+
   if(Button = mbLeft)then
   begin
     is_dragged:=True;
@@ -357,6 +407,9 @@ begin
     fy := Y - (TPositionedLayer(selection).GetAdjustedLocation.Top);
     pdx:=fX;
     pdy:=fY;
+    hcx :=  fx;
+    hcy := fy;
+
     if(Button = mbLeft)then
     begin
       is_dragged:=False;

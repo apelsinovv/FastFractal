@@ -33,7 +33,6 @@ object MainForm: TMainForm
     ShowHint = False
     OverSize = 0
     TabOrder = 0
-    ExplicitWidth = 712
   end
   object Panel1: TPanel
     Left = 0
@@ -43,7 +42,6 @@ object MainForm: TMainForm
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitWidth = 889
     object Label1: TLabel
       Left = 99
       Top = 2
@@ -78,6 +76,7 @@ object MainForm: TMainForm
       Width = 23
       Height = 22
       Caption = '...'
+      OnClick = SpeedButton1Click
     end
     object Label5: TLabel
       Left = 373
@@ -267,6 +266,24 @@ object MainForm: TMainForm
       TabOrder = 5
       OnClick = chbQualityClick
     end
+    object Button1: TButton
+      Left = 16
+      Top = 192
+      Width = 25
+      Height = 25
+      Caption = '+'
+      TabOrder = 6
+      OnClick = Button1Click
+    end
+    object Button2: TButton
+      Left = 47
+      Top = 192
+      Width = 26
+      Height = 25
+      Caption = '-'
+      TabOrder = 7
+      OnClick = Button2Click
+    end
   end
   object ProgressBar1: TProgressBar
     Left = 0
@@ -275,8 +292,6 @@ object MainForm: TMainForm
     Height = 6
     Align = alBottom
     TabOrder = 3
-    ExplicitTop = 468
-    ExplicitWidth = 889
   end
   object Timer1: TTimer
     Interval = 500
