@@ -7,35 +7,32 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, UFractal, Vcl.StdCtrls, Vcl.ExtCtrls,
   GR32_Image, GR32, GR32_Layers, JvFullColorSpaces, JvExStdCtrls, JvCombobox, JvFullColorCtrls,
   Vcl.Buttons, Vcl.Mask, JvExMask, JvSpin, math, Vcl.ComCtrls, syncobjs,
-  Vcl.ToolWin, UnavPage;
+  Vcl.ToolWin, UnavPage, USettings, IniFiles;
 
 type
+
+  PNavPoint = ^TNavPoint;
+  TNavPoint= record
+   x,y,z : Double;
+  end;
+
   TMainForm = class(TForm)
     ImgView: TImgView32;
     Panel1: TPanel;
-    cbResolution: TComboBox;
     cbApprox: TComboBox;
     Label1: TLabel;
-    Label2: TLabel;
-    cbAntialias: TComboBox;
-    Label3: TLabel;
     cbColorSheme: TComboBox;
     Label4: TLabel;
     SpeedButton1: TSpeedButton;
     ProgressBar1: TProgressBar;
-    ScrollBarDepth: TScrollBar;
-    Edit1: TEdit;
-    Label9: TLabel;
     chbQuality: TCheckBox;
     StatusBar1: TStatusBar;
     SpeedButton2: TSpeedButton;
+    btnControl: TSpeedButton;
     procedure FormCreate(Sender: TObject);
-    procedure ZSpinChange(Sender: TObject);
     procedure FormMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
     procedure FormShow(Sender: TObject);
-    procedure Edit1Change(Sender: TObject);
-    procedure ScrollBarDepthChange(Sender: TObject);
     procedure cbApproxChange(Sender: TObject);
     procedure chbQualityClick(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
@@ -46,6 +43,10 @@ type
     procedure Button5Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
+    procedure btnControlClick(Sender: TObject);
+    procedure SpeedButton2Click(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure FormResize(Sender: TObject);
   private
      is_dragged: LongBool;
      is_hqual:LongBool;
@@ -53,10 +54,19 @@ type
       fscale:Double;
       fposx:Double;
       fposy:Double;
+
+      fApproxIndex,
+      fAntialiasIndex,
+      fResolutionIndex: Integer;
+      fDepth: Integer;
       FSelection: TPositionedLayer;
       RBLayer: TRubberbandLayer;
       fDrawCS: TCriticalSection;
       fRedrawIntervalStart: Cardinal;
+      fSnapshot,
+      fVideo,
+      fVideotmp: String;
+
     procedure onLMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure onLMouseUp(Sender: TObject; Button: TMouseButton;
@@ -65,6 +75,10 @@ type
                            X, Y: Integer);
 
     procedure build_fractal_progress(var message: Tmessage); message WM_FRACTAL_PROGRESS;
+    procedure SetDepth(const Value: Integer);
+    procedure setAntialiasIndex(const Value: Integer);
+    procedure setResolutionIndex(const Value: Integer);
+    procedure setApproxIndex(const Value: Integer);
 
   public
      pdx, pdy, ccx, ccy:Double;//Longint;
@@ -81,7 +95,10 @@ type
     property posy: Double read fposy write setPosy;
     property scale: Double read fscale write setScale;
     property Selection: TPositionedLayer read FSelection write SetSelection;
-
+    property Depth: Integer read fDepth write SetDepth;
+    property ApproxIndex: Integer read fApproxIndex write setApproxIndex;
+    property AntialiasIndex: Integer read fAntialiasIndex write setAntialiasIndex;
+    property ResolutionIndex: Integer read fResolutionIndex write setResolutionIndex;
   end;
 
   TDrawer = class(TThread)
@@ -123,10 +140,6 @@ uses uSetColor;
 {$R *.dfm}
 
 
-procedure TMainForm.ScrollBarDepthChange(Sender: TObject);
-begin
- Edit1.Text := IntToStr(ScrollBarDepth.Position);
-end;
 
 procedure TMainForm.setPosx(const Value: Double);
 begin
@@ -154,6 +167,14 @@ begin
      NavPage.YSpin.OnChange :=NavPage.YSpinChange;
     end;
   end;
+end;
+
+procedure TMainForm.setResolutionIndex(const Value: Integer);
+begin
+ if fResolutionIndex <> Value then
+ begin
+  fResolutionIndex := Value;
+ end;
 end;
 
 procedure TMainForm.setScale(const Value: Double);
@@ -190,6 +211,37 @@ begin
   cbColorSheme.Items.Add(fractal.ColorSheme.Colorshemas.Items[i].Name);
  cbColorSheme.ItemIndex := fractal.ColorSheme.SelectedIndex;
  cbColorSheme.OnChange := cbApproxChange;
+end;
+
+procedure TMainForm.SpeedButton2Click(Sender: TObject);
+begin
+ SetFrm := TSetFrm.Create(self);
+ SetFrm.cbResolution.ItemIndex := fResolutionIndex;
+ SetFrm.cbAntialias.ItemIndex := fAntialiasIndex;
+ SetFrm.ScrollBarDepth.Position := fDepth;
+ SetFrm.edFileSpan.Text := fSnapshot;
+ SetFrm.edFileVideo.Text := fVideo;
+ if SetFrm.ShowModal = mrOk then
+ begin
+  ResolutionIndex := SetFrm.cbResolution.ItemIndex;
+  AntialiasIndex := SetFrm.cbAntialias.ItemIndex;
+  Depth := SetFrm.ScrollBarDepth.Position;
+  fSnapshot := SetFrm.edFileSpan.Text;
+  fVideo := SetFrm.edFileVideo.Text;
+ end;
+end;
+
+procedure TMainForm.btnControlClick(Sender: TObject);
+begin
+ if btnControl.Down then
+ begin
+  NavPage.Left := self.Left + self.Width - NavPage.Width;
+  NavPage.Top := self.Top + self.Height - NavPage.Height;
+  NavPage.Show;
+ end else
+  NavPage.Close;
+
+
 end;
 
 procedure TMainForm.Timer1Timer(Sender: TObject);
@@ -277,7 +329,6 @@ end;
 procedure TMainForm.cbApproxChange(Sender: TObject);
 begin
  Draw(fQuality);
-
 end;
 
 procedure TMainForm.chbQualityClick(Sender: TObject);
@@ -294,9 +345,26 @@ begin
 
 end;
 
-procedure TMainForm.Edit1Change(Sender: TObject);
+procedure TMainForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+var
+ ini: TIniFile;
 begin
- fractal.Depth := StrToInt(Edit1.Text);
+ ini := TIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
+ try
+
+   ini.WriteInteger('main','resolution', ResolutionIndex);
+   ini.WriteInteger('main','antialiasing', AntialiasIndex);
+   ini.WriteInteger('main', 'aproximation', ApproxIndex);
+   ini.WriteInteger('main', 'depth', Depth);
+   ini.WriteBool('main', 'cntrl', btnControl.Down);
+   ini.WriteString('main', 'snap',  fSnapshot);
+   ini.WriteString('main', 'video',  fVideo);
+   ini.WriteString('main', 'videobuf',  fVideotmp);
+
+ finally
+  FreeAndNil(ini);
+ end;
+ CanClose := true;
 end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
@@ -305,6 +373,8 @@ var
   Layer: TBitmapLayer;
   p: TPoint;
   i: integer;
+  fn: string;
+  ini: TIniFile;
 begin
  posx :=-2.74217800;
  posy :=-1.81874501;
@@ -313,26 +383,47 @@ begin
 
 
  fractal := TFractal.Create(self);
- fractal.Width := cImg_size[1].X;
- fractal.Height := cImg_size[1].Y;
+ fractal.Width := cImg_size[ResolutionIndex].X;
+ fractal.Height := cImg_size[ResolutionIndex].Y;
  fractal.XPos := posx;
  fractal.YPos := posy;
  fractal.ZScale := scale;
 
- ci := TColorSItem.Create(fractal.ColorSheme);
- ci.Colors.Add(TLerpTag.Create(0,0,0,255,64));
- ci.Colors.Add(TLerpTag.Create(255,0,0,255,64));
- ci.Colors.Add(TLerpTag.Create(255,255,0,255,64));
- ci.Colors.Add(TLerpTag.Create(0,255,0,255,64));
- ci.Colors.Add(TLerpTag.Create(0,255,255,255,64));
- ci.Colors.Add(TLerpTag.Create(0,0,255,255,64));
- ci.Colors.Add(TLerpTag.Create(255,0,255,255,64));
- ci.Colors.Add(TLerpTag.Create(255,255,255,255,64));
- ci.Colors.Add(TLerpTag.Create(0,0,0,255,64));
- ci.Colors.Add(TLerpTag.Create(0,0,0,255,64));
- ci.Name := 'Color';
- fractal.SetColorSheme(ci);
+ ini := TIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
+ try
 
+   ResolutionIndex := ini.ReadInteger('main','resolution', 1);
+   AntialiasIndex := ini.ReadInteger('main','antialiasing', 0);
+   ApproxIndex := ini.ReadInteger('main', 'aproximation', 1);
+   Depth := ini.ReadInteger('main', 'depth', 750);
+   btnControl.Down := ini.ReadBool('main', 'cntrl', true);
+   fSnapshot := ini.ReadString('main', 'snap',  IncludeTrailingPathDelimiter(ExtractFilePath(application.ExeName)) + 'Snapshots');
+   fVideo := ini.ReadString('main', 'video',  IncludeTrailingPathDelimiter(ExtractFilePath(application.ExeName)) + 'VideoResult');
+   fVideotmp := ini.ReadString('main', 'videobuf',  IncludeTrailingPathDelimiter(ExtractFilePath(application.ExeName)) + 'tmpbuf');
+ finally
+  FreeAndNil(ini);
+ end;
+
+
+ fn := ChangeFileExt(Application.ExeName,'.fch');
+ if fileexists(fn) then
+  fractal.ColorSheme.Read(fn);
+ if fractal.ColorSheme.Colorshemas.Count = 0 then
+ begin
+   ci := TColorSItem.Create(fractal.ColorSheme);
+   ci.Colors.Add(TLerpTag.Create(0,0,0,255,64));
+   ci.Colors.Add(TLerpTag.Create(255,0,0,255,64));
+   ci.Colors.Add(TLerpTag.Create(255,255,0,255,64));
+   ci.Colors.Add(TLerpTag.Create(0,255,0,255,64));
+   ci.Colors.Add(TLerpTag.Create(0,255,255,255,64));
+   ci.Colors.Add(TLerpTag.Create(0,0,255,255,64));
+   ci.Colors.Add(TLerpTag.Create(255,0,255,255,64));
+   ci.Colors.Add(TLerpTag.Create(255,255,255,255,64));
+   ci.Colors.Add(TLerpTag.Create(0,0,0,255,64));
+   ci.Colors.Add(TLerpTag.Create(0,0,0,255,64));
+   ci.Name := 'Color';
+   fractal.SetColorSheme(ci);
+ end;
  for I := 0 to fractal.ColorSheme.Colorshemas.Count - 1 do
   cbColorSheme.Items.Add(fractal.ColorSheme.Colorshemas.Items[i].Name);
  cbColorSheme.ItemIndex := fractal.ColorSheme.SelectedIndex;
@@ -373,10 +464,15 @@ begin
 
 end;
 
+procedure TMainForm.FormResize(Sender: TObject);
+begin
+  btnControlClick(self);
+end;
+
 procedure TMainForm.FormShow(Sender: TObject);
 begin
  Draw(True);
- NavPage.Show;
+ btnControlClick(self);
 end;
 
 procedure TMainForm.OnDrawFinish(sender: TObject);
@@ -452,9 +548,32 @@ begin
     end;
 end;
 
-procedure TMainForm.ZSpinChange(Sender: TObject);
+procedure TMainForm.setAntialiasIndex(const Value: Integer);
 begin
+ if fAntialiasIndex <> Value then
+ begin
+  fAntialiasIndex := Value;
+ end;
 end;
+
+procedure TMainForm.setApproxIndex(const Value: Integer);
+begin
+ if fApproxIndex <> Value then
+ begin
+  fApproxIndex := Value;
+  cbApprox.ItemIndex := fApproxIndex;
+ end;
+end;
+
+procedure TMainForm.SetDepth(const Value: Integer);
+begin
+  if fDepth <> value then
+  begin
+   fDepth := value;
+   fractal.Depth := fDepth;
+  end;
+end;
+
 
 { TDrawer }
 
@@ -479,12 +598,12 @@ begin
   fDrawCS.Acquire;
   try
    ProgressBar1.Position:=0;
-   ProgressBar1.Max:= Cimg_size[cbResolution.ItemIndex].Y;
-   fractal.Width := Cimg_size[cbResolution.ItemIndex].X;
-   fractal.Height := Cimg_size[cbResolution.ItemIndex].Y;
+   ProgressBar1.Max:= Cimg_size[fResolutionIndex].Y;
+   fractal.Width := Cimg_size[fResolutionIndex].X;
+   fractal.Height := Cimg_size[fResolutionIndex].Y;
    fractal.ApproxResolution := cApporox[cbApprox.ItemIndex];
-   fractal.Antialiasing := cAntialias[cbAntialias.ItemIndex];
-   fractal.Depth := StrToInt(Edit1.Text);
+   fractal.Antialiasing := cAntialias[fAntialiasIndex];
+   fractal.Depth := fDepth;
    fractal.ColorSheme.SelectedIndex := cbColorSheme.ItemIndex;
    fractal.XPos := fposx;
    fractal.YPos := fposy;

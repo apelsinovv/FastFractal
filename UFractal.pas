@@ -412,7 +412,7 @@ end;
 constructor TFractal.Create(AOwner: TWinControl);
 var pnull:Pointer;
 begin
-  fOwner := AOwner;
+ fOwner := AOwner;
  g_mandelbrot_skip := 0;
  fAntialiasing := 1;
  fqdrawFlag := False;
@@ -447,7 +447,7 @@ begin
 
 
 
- fColorSheme := TColorSheme.Create;
+ fColorSheme := TColorSheme.Create(False);
 
 end;
 
@@ -1063,7 +1063,6 @@ begin
    si.Read(fReader);
    fColorshemas.Add(si);
   end;
-//  fReader.FlushBuffer;
  finally
   FreeAndNil(fReader);
   FreeAndNil(fstrm);

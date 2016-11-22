@@ -1,12 +1,11 @@
 object NavPage: TNavPage
   Left = 0
   Top = 0
-  AlphaBlend = True
   AlphaBlendValue = 200
-  BorderStyle = bsDialog
+  BorderStyle = bsSizeToolWin
   Caption = 'navigation'
-  ClientHeight = 191
-  ClientWidth = 171
+  ClientHeight = 380
+  ClientWidth = 169
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -19,13 +18,14 @@ object NavPage: TNavPage
   object Panel2: TPanel
     Left = 0
     Top = 0
-    Width = 171
-    Height = 191
+    Width = 169
+    Height = 380
     Align = alClient
     BevelOuter = bvNone
     DockSite = True
     TabOrder = 0
-    ExplicitHeight = 193
+    ExplicitWidth = 171
+    ExplicitHeight = 461
     object Label6: TLabel
       Left = 6
       Top = 24
@@ -81,7 +81,7 @@ object NavPage: TNavPage
       OnChange = ZSpinChange
     end
     object Button1: TButton
-      Left = 26
+      Left = 30
       Top = 101
       Width = 25
       Height = 25
@@ -136,6 +136,56 @@ object NavPage: TNavPage
       Caption = '<'
       TabOrder = 8
       OnClick = Button6Click
+    end
+    object ListBox1: TListBox
+      Left = 0
+      Top = 216
+      Width = 169
+      Height = 164
+      Align = alBottom
+      Anchors = [akLeft, akTop, akRight, akBottom]
+      ItemHeight = 13
+      TabOrder = 9
+      OnClick = ListBox1Click
+      ExplicitTop = 221
+      ExplicitWidth = 171
+      ExplicitHeight = 245
+    end
+    object Button7: TButton
+      Left = 7
+      Top = 195
+      Width = 20
+      Height = 20
+      Caption = '+'
+      TabOrder = 10
+      OnClick = Button7Click
+    end
+    object Button8: TButton
+      Left = 29
+      Top = 195
+      Width = 20
+      Height = 20
+      Caption = '-'
+      TabOrder = 11
+      OnClick = Button8Click
+    end
+    object Button9: TButton
+      Left = 72
+      Top = 195
+      Width = 44
+      Height = 20
+      Caption = 'Save'
+      TabOrder = 12
+      OnClick = Button9Click
+    end
+    object Button10: TButton
+      Left = 122
+      Top = 195
+      Width = 44
+      Height = 20
+      Caption = 'Load'
+      TabOrder = 13
+      OnClick = Button10Click
     end
   end
 end

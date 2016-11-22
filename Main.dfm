@@ -11,8 +11,10 @@ object MainForm: TMainForm
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
+  OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnMouseWheel = FormMouseWheel
+  OnResize = FormResize
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
@@ -37,10 +39,6 @@ object MainForm: TMainForm
     ShowHint = False
     OverSize = 0
     TabOrder = 0
-    ExplicitLeft = 8
-    ExplicitTop = -31
-    ExplicitWidth = 720
-    ExplicitHeight = 426
   end
   object Panel1: TPanel
     Left = 0
@@ -50,85 +48,59 @@ object MainForm: TMainForm
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitLeft = -8
-    ExplicitTop = 64
+    DesignSize = (
+      895
+      41)
     object Label1: TLabel
-      Left = 147
+      Left = 69
       Top = 0
       Width = 69
       Height = 13
       Caption = 'Approximation'
     end
-    object Label2: TLabel
-      Left = 85
-      Top = 0
-      Width = 19
-      Height = 13
-      Caption = 'Size'
-    end
-    object Label3: TLabel
-      Left = 223
-      Top = 0
-      Width = 54
-      Height = 13
-      Caption = 'Antialiasing'
-    end
     object Label4: TLabel
-      Left = 302
+      Left = 160
       Top = 0
       Width = 64
       Height = 13
       Caption = 'Color scheme'
     end
     object SpeedButton1: TSpeedButton
-      Left = 379
+      Left = 237
       Top = 13
       Width = 23
       Height = 22
       Caption = '...'
       OnClick = SpeedButton1Click
     end
-    object Label9: TLabel
-      Left = 422
-      Top = 0
-      Width = 33
-      Height = 13
-      Caption = 'Depth:'
-    end
     object SpeedButton2: TSpeedButton
-      Left = 8
+      Left = 5
       Top = 13
       Width = 57
       Height = 22
       Caption = 'Settings'
+      OnClick = SpeedButton2Click
     end
-    object cbResolution: TComboBox
-      Left = 60
-      Top = 14
-      Width = 81
-      Height = 21
-      Style = csDropDownList
-      ItemIndex = 1
-      TabOrder = 0
-      Text = '1024x768'
-      OnChange = cbApproxChange
-      Items.Strings = (
-        '800x600'
-        '1024x768'
-        '1600x1200'
-        '2272x1704'
-        '3264x2448'
-        '4096x3072'
-        '9600x7200')
+    object btnControl: TSpeedButton
+      Left = 800
+      Top = 13
+      Width = 79
+      Height = 22
+      AllowAllUp = True
+      Anchors = [akTop, akRight]
+      GroupIndex = 1
+      Caption = 'Control panel'
+      Flat = True
+      OnClick = btnControlClick
     end
     object cbApprox: TComboBox
-      Left = 148
+      Left = 70
       Top = 14
       Width = 68
       Height = 21
       Style = csDropDownList
       ItemIndex = 1
-      TabOrder = 1
+      TabOrder = 0
       Text = '2'
       OnChange = cbApproxChange
       Items.Strings = (
@@ -138,65 +110,22 @@ object MainForm: TMainForm
         '8'
         '16')
     end
-    object cbAntialias: TComboBox
-      Left = 223
-      Top = 14
-      Width = 54
-      Height = 21
-      Style = csDropDownList
-      ItemIndex = 0
-      TabOrder = 2
-      Text = '1'
-      OnChange = cbApproxChange
-      Items.Strings = (
-        '1'
-        '2'
-        '4'
-        '8'
-        '16'
-        '32'
-        '64'
-        '128')
-    end
     object cbColorSheme: TComboBox
-      Left = 295
+      Left = 153
       Top = 14
       Width = 82
       Height = 21
       Style = csDropDownList
-      TabOrder = 3
+      TabOrder = 1
       OnChange = cbApproxChange
     end
-    object ScrollBarDepth: TScrollBar
-      Left = 422
-      Top = 19
-      Width = 251
-      Height = 12
-      LargeChange = 25
-      Max = 65536
-      PageSize = 0
-      Position = 750
-      SmallChange = 5
-      TabOrder = 4
-      OnChange = ScrollBarDepthChange
-    end
-    object Edit1: TEdit
-      Left = 679
-      Top = 12
-      Width = 48
-      Height = 21
-      NumbersOnly = True
-      TabOrder = 5
-      Text = '750'
-      OnChange = Edit1Change
-    end
     object chbQuality: TCheckBox
-      Left = 733
+      Left = 282
       Top = 16
       Width = 59
       Height = 17
       Caption = 'Quality'
-      TabOrder = 6
+      TabOrder = 2
       OnClick = chbQualityClick
     end
   end
@@ -207,15 +136,24 @@ object MainForm: TMainForm
     Height = 6
     Align = alBottom
     TabOrder = 2
-    ExplicitTop = 467
   end
   object StatusBar1: TStatusBar
     Left = 0
     Top = 454
     Width = 895
     Height = 19
-    Panels = <>
-    ExplicitLeft = -8
-    ExplicitTop = 467
+    Panels = <
+      item
+        Width = 100
+      end
+      item
+        Width = 100
+      end
+      item
+        Width = 100
+      end
+      item
+        Width = 100
+      end>
   end
 end

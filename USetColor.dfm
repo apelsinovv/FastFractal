@@ -26,7 +26,6 @@ object ColorForm: TColorForm
     Align = alLeft
     BevelOuter = bvNone
     TabOrder = 0
-    ExplicitHeight = 461
     DesignSize = (
       201
       471)
@@ -39,7 +38,6 @@ object ColorForm: TColorForm
       ItemHeight = 13
       TabOrder = 0
       OnClick = ListBox1Click
-      ExplicitHeight = 446
     end
     object Button1: TButton
       Left = 0
@@ -50,7 +48,6 @@ object ColorForm: TColorForm
       Caption = 'Add '
       TabOrder = 1
       OnClick = Button1Click
-      ExplicitTop = 447
     end
     object Button2: TButton
       Left = 64
@@ -62,7 +59,7 @@ object ColorForm: TColorForm
       TabOrder = 2
     end
     object Button3: TButton
-      Left = 105
+      Left = 121
       Top = 443
       Width = 40
       Height = 25
@@ -72,7 +69,7 @@ object ColorForm: TColorForm
       OnClick = Button3Click
     end
     object Button4: TButton
-      Left = 145
+      Left = 160
       Top = 443
       Width = 40
       Height = 25
@@ -90,8 +87,6 @@ object ColorForm: TColorForm
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitWidth = 483
-    ExplicitHeight = 461
     DesignSize = (
       460
       471)
@@ -206,7 +201,6 @@ object ColorForm: TColorForm
       Position = 64
       TabOrder = 0
       OnChange = ScrollBarLLChange
-      ExplicitTop = 422
     end
     object ColorR: TEdit
       Left = 333
@@ -218,7 +212,6 @@ object ColorForm: TColorForm
       TabOrder = 1
       Text = '0'
       OnChange = ColorRChange
-      ExplicitTop = 313
     end
     object ColorG: TEdit
       Left = 333
@@ -230,7 +223,6 @@ object ColorForm: TColorForm
       TabOrder = 2
       Text = '0'
       OnChange = ColorRChange
-      ExplicitTop = 336
     end
     object ColorA: TEdit
       Left = 333
@@ -242,7 +234,6 @@ object ColorForm: TColorForm
       TabOrder = 3
       Text = '0'
       OnChange = ColorRChange
-      ExplicitTop = 384
     end
     object ColorL: TEdit
       Left = 333
@@ -254,7 +245,6 @@ object ColorForm: TColorForm
       TabOrder = 4
       Text = '0'
       OnChange = ColorLChange
-      ExplicitTop = 433
     end
     object chbCycle: TCheckBox
       Left = 6
@@ -267,8 +257,8 @@ object ColorForm: TColorForm
       OnClick = chbCycleClick
     end
     object edCycleCount: TEdit
-      Left = 51
-      Top = 99
+      Left = 52
+      Top = 97
       Width = 46
       Height = 16
       AutoSize = False
@@ -315,8 +305,6 @@ object ColorForm: TColorForm
       OnClick = ListView1Click
       OnCustomDrawSubItem = ListView1CustomDrawSubItem
       OnDeletion = ListView1Deletion
-      ExplicitWidth = 364
-      ExplicitHeight = 168
     end
     object Img2: TImage32
       Left = 384
@@ -331,8 +319,6 @@ object ColorForm: TColorForm
       Scale = 1.000000000000000000
       ScaleMode = smNormal
       TabOrder = 8
-      ExplicitLeft = 376
-      ExplicitTop = 312
     end
     object Img1: TImage32
       Left = 0
@@ -347,9 +333,6 @@ object ColorForm: TColorForm
       Scale = 1.000000000000000000
       ScaleMode = smOptimal
       TabOrder = 9
-      ExplicitLeft = 6
-      ExplicitTop = 1
-      ExplicitWidth = 443
     end
     object Panel3: TPanel
       Left = 104
@@ -396,7 +379,6 @@ object ColorForm: TColorForm
       Caption = 'Add color'
       TabOrder = 11
       OnClick = btnAddClick
-      ExplicitLeft = 376
     end
     object btnDelete: TButton
       Left = 384
@@ -408,7 +390,6 @@ object ColorForm: TColorForm
       Enabled = False
       TabOrder = 12
       OnClick = btnDeleteClick
-      ExplicitLeft = 376
     end
     object edFullColor: TEdit
       Left = 333
@@ -421,24 +402,24 @@ object ColorForm: TColorForm
     end
     object btnRepaint: TButton
       Left = 379
-      Top = 93
+      Top = 95
       Width = 77
       Height = 25
       Anchors = [akTop, akRight]
       Caption = 'Apply'
       TabOrder = 14
       OnClick = btnRepaintClick
-      ExplicitLeft = 371
     end
     object chbAutoR: TCheckBox
       Left = 381
-      Top = 118
+      Top = 119
       Width = 84
       Height = 17
       Anchors = [akTop, akRight]
       Caption = 'Auto Apply'
+      Checked = True
+      State = cbChecked
       TabOrder = 15
-      ExplicitLeft = 373
     end
     object btnInsert: TButton
       Left = 384
@@ -450,7 +431,6 @@ object ColorForm: TColorForm
       Enabled = False
       TabOrder = 16
       OnClick = btnInsertClick
-      ExplicitLeft = 376
     end
     object btnUp: TButton
       Left = 384
@@ -462,7 +442,6 @@ object ColorForm: TColorForm
       Enabled = False
       TabOrder = 17
       OnClick = btnUpClick
-      ExplicitLeft = 376
     end
     object btnDown: TButton
       Left = 384
@@ -474,7 +453,6 @@ object ColorForm: TColorForm
       Enabled = False
       TabOrder = 18
       OnClick = btnDownClick
-      ExplicitLeft = 376
     end
   end
   object ColorB: TEdit
@@ -487,6 +465,5 @@ object ColorForm: TColorForm
     TabOrder = 2
     Text = '0'
     OnChange = ColorRChange
-    ExplicitTop = 360
   end
 end

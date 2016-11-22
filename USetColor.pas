@@ -101,6 +101,7 @@ end;
 procedure TColorForm.btnRepaintClick(Sender: TObject);
 begin
  repaintColors(ci);
+ Fractal.ColorSheme.Write(ChangeFileExt(application.ExeName, '.fch'));
 end;
 
 procedure TColorForm.RefreshColorSheme(const index: Integer);
@@ -132,13 +133,33 @@ begin
 end;
 
 procedure TColorForm.Button3Click(Sender: TObject);
+var
+ dlg: TSaveDialog;
 begin
- Fractal.ColorSheme.Write('c:\colorsheme.fch');
+  dlg := TSaveDialog.Create(self);
+  try
+    dlg.InitialDir := ExtractFilePath(application.ExeName);
+    dlg.Filter := 'fractal color scheme (*.fch)|*.fch';
+    if dlg.Execute then
+     Fractal.ColorSheme.Write(dlg.FileName);
+  finally
+    FreeAndNil(dlg);
+  end;
 end;
 
 procedure TColorForm.Button4Click(Sender: TObject);
+var
+ dlg: TOpenDialog;
 begin
- Fractal.ColorSheme.Read('c:\colorsheme.fch');
+  dlg := TOpenDialog.Create(self);
+  try
+    dlg.InitialDir := ExtractFilePath(application.ExeName);
+    dlg.Filter := 'fractal color scheme (*.fch)|*.fch';
+    if dlg.Execute then
+     Fractal.ColorSheme.Read(dlg.FileName);
+  finally
+    FreeAndNil(dlg);
+  end;
  RepaintColorsheme(1);
 end;
 
@@ -315,11 +336,20 @@ begin
  ListBox1.Clear;
  ci := nil;
  for I := 0 to fractal.ColorSheme.Colorshemas.Count - 1 do
+ begin
   ListBox1.Items.AddObject(fractal.ColorSheme.Colorshemas.Items[i].Name, fractal.ColorSheme.Colorshemas.Items[i]);
+
+ end;
  ListBox1.ItemIndex := idx;
  ci := fractal.ColorSheme.Colorshemas.Items[idx];
+ edCycleCount.OnChange := nil;
+ chbCycle.OnClick := nil;
  chbCycle.Checked := ci.Cycle;
  edCycleCount.Text := IntToStr(ci.CycleCount);
+
+ chbCycle.OnClick := chbCycleClick;
+ edCycleCount.OnChange := chbCycleClick;
+ ci := nil;
  ListBox1Click(self);
 end;
 
@@ -336,7 +366,7 @@ var
  i: Integer;
 begin
  ListView1.Items.Clear;
- ci :=TColorSItem(ListBox1.Items.Objects[ListBox1.ItemIndex]);
+ ci := TColorSItem(ListBox1.Items.Objects[ListBox1.ItemIndex]);
  if assigned(ci) then
  begin
   i := 1;
