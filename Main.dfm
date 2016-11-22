@@ -19,11 +19,15 @@ object MainForm: TMainForm
   object ImgView: TImgView32
     Left = 0
     Top = 41
-    Width = 720
-    Height = 426
+    Width = 895
+    Height = 407
     Align = alClient
+    Bitmap.DrawMode = dmBlend
+    Bitmap.CombineMode = cmMerge
     Bitmap.ResamplerClassName = 'TNearestResampler'
     BitmapAlign = baCustom
+    Color = clBlack
+    ParentColor = False
     ParentShowHint = False
     Scale = 1.000000000000000000
     ScaleMode = smScale
@@ -33,6 +37,10 @@ object MainForm: TMainForm
     ShowHint = False
     OverSize = 0
     TabOrder = 0
+    ExplicitLeft = 8
+    ExplicitTop = -31
+    ExplicitWidth = 720
+    ExplicitHeight = 426
   end
   object Panel1: TPanel
     Left = 0
@@ -42,51 +50,60 @@ object MainForm: TMainForm
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 1
+    ExplicitLeft = -8
+    ExplicitTop = 64
     object Label1: TLabel
-      Left = 99
-      Top = 2
+      Left = 147
+      Top = 0
       Width = 69
       Height = 13
       Caption = 'Approximation'
     end
     object Label2: TLabel
-      Left = 33
-      Top = 2
+      Left = 85
+      Top = 0
       Width = 19
       Height = 13
       Caption = 'Size'
     end
     object Label3: TLabel
-      Left = 175
-      Top = 2
+      Left = 223
+      Top = 0
       Width = 54
       Height = 13
       Caption = 'Antialiasing'
     end
     object Label4: TLabel
-      Left = 262
-      Top = 2
+      Left = 302
+      Top = 0
       Width = 64
       Height = 13
       Caption = 'Color scheme'
     end
     object SpeedButton1: TSpeedButton
-      Left = 339
-      Top = 15
+      Left = 379
+      Top = 13
       Width = 23
       Height = 22
       Caption = '...'
       OnClick = SpeedButton1Click
     end
-    object Label5: TLabel
-      Left = 373
-      Top = 2
-      Width = 62
+    object Label9: TLabel
+      Left = 422
+      Top = 0
+      Width = 33
       Height = 13
-      Caption = 'Interpolation'
+      Caption = 'Depth:'
+    end
+    object SpeedButton2: TSpeedButton
+      Left = 8
+      Top = 13
+      Width = 57
+      Height = 22
+      Caption = 'Settings'
     end
     object cbResolution: TComboBox
-      Left = 13
+      Left = 60
       Top = 14
       Width = 81
       Height = 21
@@ -105,8 +122,8 @@ object MainForm: TMainForm
         '9600x7200')
     end
     object cbApprox: TComboBox
-      Left = 100
-      Top = 16
+      Left = 148
+      Top = 14
       Width = 68
       Height = 21
       Style = csDropDownList
@@ -122,8 +139,8 @@ object MainForm: TMainForm
         '16')
     end
     object cbAntialias: TComboBox
-      Left = 175
-      Top = 16
+      Left = 223
+      Top = 14
       Width = 54
       Height = 21
       Style = csDropDownList
@@ -142,161 +159,63 @@ object MainForm: TMainForm
         '128')
     end
     object cbColorSheme: TComboBox
-      Left = 255
-      Top = 16
+      Left = 295
+      Top = 14
       Width = 82
       Height = 21
       Style = csDropDownList
       TabOrder = 3
       OnChange = cbApproxChange
     end
-    object ComboBox5: TComboBox
-      Left = 370
-      Top = 16
-      Width = 71
-      Height = 21
-      Style = csDropDownList
-      ItemIndex = 0
-      TabOrder = 4
-      Text = 'Linear'
-      OnChange = cbApproxChange
-      Items.Strings = (
-        'Linear'
-        'Cosine')
-    end
-  end
-  object Panel2: TPanel
-    Left = 720
-    Top = 41
-    Width = 175
-    Height = 426
-    Align = alRight
-    BevelOuter = bvNone
-    TabOrder = 2
-    object Label6: TLabel
-      Left = 6
-      Top = 24
-      Width = 10
-      Height = 13
-      Caption = 'X:'
-    end
-    object Label7: TLabel
-      Left = 6
-      Top = 51
-      Width = 10
-      Height = 13
-      Caption = 'Y:'
-    end
-    object Label8: TLabel
-      Left = 6
-      Top = 73
-      Width = 30
-      Height = 13
-      Caption = 'Zoom:'
-    end
-    object Label9: TLabel
-      Left = 6
-      Top = 101
-      Width = 33
-      Height = 13
-      Caption = 'Depth:'
-    end
-    object XSpin: TJvSpinEdit
-      Left = 42
-      Top = 16
-      Width = 121
-      Height = 21
-      Decimal = 8
-      ValueType = vtFloat
-      Value = -2.600000000000000000
-      TabOrder = 0
-      OnChange = XSpinChange
-    end
-    object YSpin: TJvSpinEdit
-      Left = 42
-      Top = 43
-      Width = 121
-      Height = 21
-      Decimal = 8
-      ValueType = vtFloat
-      Value = -2.000000000000000000
-      TabOrder = 1
-      OnChange = YSpinChange
-    end
-    object ZSpin: TJvSpinEdit
-      Left = 42
-      Top = 70
-      Width = 121
-      Height = 21
-      Decimal = 8
-      ValueType = vtFloat
-      Value = 0.100000000000000000
-      TabOrder = 2
-      OnChange = ZSpinChange
-    end
     object ScrollBarDepth: TScrollBar
-      Left = 6
-      Top = 120
-      Width = 153
-      Height = 17
+      Left = 422
+      Top = 19
+      Width = 251
+      Height = 12
       LargeChange = 25
       Max = 65536
       PageSize = 0
       Position = 750
       SmallChange = 5
-      TabOrder = 3
+      TabOrder = 4
       OnChange = ScrollBarDepthChange
     end
     object Edit1: TEdit
-      Left = 42
-      Top = 97
-      Width = 119
+      Left = 679
+      Top = 12
+      Width = 48
       Height = 21
       NumbersOnly = True
-      TabOrder = 4
+      TabOrder = 5
       Text = '750'
       OnChange = Edit1Change
     end
     object chbQuality: TCheckBox
-      Left = 6
-      Top = 151
+      Left = 733
+      Top = 16
       Width = 59
       Height = 17
       Caption = 'Quality'
-      TabOrder = 5
-      OnClick = chbQualityClick
-    end
-    object Button1: TButton
-      Left = 16
-      Top = 192
-      Width = 25
-      Height = 25
-      Caption = '+'
       TabOrder = 6
-      OnClick = Button1Click
-    end
-    object Button2: TButton
-      Left = 47
-      Top = 192
-      Width = 26
-      Height = 25
-      Caption = '-'
-      TabOrder = 7
-      OnClick = Button2Click
+      OnClick = chbQualityClick
     end
   end
   object ProgressBar1: TProgressBar
     Left = 0
-    Top = 467
+    Top = 448
     Width = 895
     Height = 6
     Align = alBottom
-    TabOrder = 3
+    TabOrder = 2
+    ExplicitTop = 467
   end
-  object Timer1: TTimer
-    Interval = 500
-    OnTimer = Timer1Timer
-    Left = 720
-    Top = 8
+  object StatusBar1: TStatusBar
+    Left = 0
+    Top = 454
+    Width = 895
+    Height = 19
+    Panels = <>
+    ExplicitLeft = -8
+    ExplicitTop = 467
   end
 end

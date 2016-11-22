@@ -6,13 +6,13 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, UFractal, Vcl.StdCtrls, Vcl.ExtCtrls,
   GR32_Image, GR32, GR32_Layers, JvFullColorSpaces, JvExStdCtrls, JvCombobox, JvFullColorCtrls,
-  Vcl.Buttons, Vcl.Mask, JvExMask, JvSpin, math, Vcl.ComCtrls, syncobjs;
+  Vcl.Buttons, Vcl.Mask, JvExMask, JvSpin, math, Vcl.ComCtrls, syncobjs,
+  Vcl.ToolWin, UnavPage;
 
 type
   TMainForm = class(TForm)
     ImgView: TImgView32;
     Panel1: TPanel;
-    Panel2: TPanel;
     cbResolution: TComboBox;
     cbApprox: TComboBox;
     Label1: TLabel;
@@ -22,25 +22,14 @@ type
     cbColorSheme: TComboBox;
     Label4: TLabel;
     SpeedButton1: TSpeedButton;
-    ComboBox5: TComboBox;
-    Label5: TLabel;
-    XSpin: TJvSpinEdit;
-    YSpin: TJvSpinEdit;
-    ZSpin: TJvSpinEdit;
-    Label6: TLabel;
-    Label7: TLabel;
-    Label8: TLabel;
-    ScrollBarDepth: TScrollBar;
-    Label9: TLabel;
-    Edit1: TEdit;
-    chbQuality: TCheckBox;
     ProgressBar1: TProgressBar;
-    Timer1: TTimer;
-    Button1: TButton;
-    Button2: TButton;
+    ScrollBarDepth: TScrollBar;
+    Edit1: TEdit;
+    Label9: TLabel;
+    chbQuality: TCheckBox;
+    StatusBar1: TStatusBar;
+    SpeedButton2: TSpeedButton;
     procedure FormCreate(Sender: TObject);
-    procedure XSpinChange(Sender: TObject);
-    procedure YSpinChange(Sender: TObject);
     procedure ZSpinChange(Sender: TObject);
     procedure FormMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
@@ -53,16 +42,17 @@ type
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure SpeedButton1Click(Sender: TObject);
+    procedure Button6Click(Sender: TObject);
+    procedure Button5Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
   private
-     pdx, pdy, ccx, ccy:Double;//Longint;
-     hcx, hcy: Double;
      is_dragged: LongBool;
      is_hqual:LongBool;
       n_nodraw:LongInt;
       fscale:Double;
       fposx:Double;
       fposy:Double;
-      fQuality: Boolean;
       FSelection: TPositionedLayer;
       RBLayer: TRubberbandLayer;
       fDrawCS: TCriticalSection;
@@ -75,6 +65,12 @@ type
                            X, Y: Integer);
 
     procedure build_fractal_progress(var message: Tmessage); message WM_FRACTAL_PROGRESS;
+
+  public
+     pdx, pdy, ccx, ccy:Double;//Longint;
+     hcx, hcy: Double;
+     fQuality: Boolean;
+
     procedure Draw(Quality: Boolean = false);
     procedure OnDrawFinish(sender: TObject);
     procedure SetSelection(Value: TPositionedLayer);
@@ -85,9 +81,6 @@ type
     property posy: Double read fposy write setPosy;
     property scale: Double read fscale write setScale;
     property Selection: TPositionedLayer read FSelection write SetSelection;
-
-  public
-    { Public declarations }
 
   end;
 
@@ -140,9 +133,12 @@ begin
   if Value<>fposx  then
   begin
     fposx := Value;
-    XSpin.OnChange := nil;
-    XSpin.Value := fposx;
-    XSpin.OnChange :=XSpinChange;
+    if assigned(NavPage) then
+    begin
+      NavPage.XSpin.OnChange := nil;
+      NavPage.XSpin.Value := fposx;
+      NavPage.XSpin.OnChange :=NavPage.XSpinChange;
+    end;
   end;
 end;
 
@@ -151,9 +147,12 @@ begin
   if Value<>fposy  then
   begin
     fposy := Value;
-    YSpin.OnChange := nil;
-    YSpin.Value := fposy;
-    YSpin.OnChange :=YSpinChange;
+    if assigned(NavPage) then
+    begin
+     NavPage.YSpin.OnChange := nil;
+     NavPage.YSpin.Value := fposy;
+     NavPage.YSpin.OnChange :=NavPage.YSpinChange;
+    end;
   end;
 end;
 
@@ -162,9 +161,12 @@ begin
   if Value<>fscale  then
   begin
     fscale := Value;
-    ZSpin.OnChange := nil;
-    ZSpin.Value := fscale;
-    ZSpin.OnChange :=ZSpinChange;
+    if assigned(NavPage) then
+    begin
+     NavPage.ZSpin.OnChange := nil;
+     NavPage.ZSpin.Value := fscale;
+     NavPage.ZSpin.OnChange :=NavPage.ZSpinChange;
+    end;
   end;
 
 end;
@@ -176,10 +178,18 @@ begin
 end;
 
 procedure TMainForm.SpeedButton1Click(Sender: TObject);
+var
+ i: integer;
 begin
  ColorForm := TColorForm.Create(self);
  ColorForm.ShowModal;
  FreeAndNil(ColorForm);
+ cbColorSheme.OnChange := nil;
+ cbColorSheme.Items.Clear;
+ for i := 0 to fractal.ColorSheme.Colorshemas.Count - 1 do
+  cbColorSheme.Items.Add(fractal.ColorSheme.Colorshemas.Items[i].Name);
+ cbColorSheme.ItemIndex := fractal.ColorSheme.SelectedIndex;
+ cbColorSheme.OnChange := cbApproxChange;
 end;
 
 procedure TMainForm.Timer1Timer(Sender: TObject);
@@ -240,11 +250,33 @@ begin
      fRedrawIntervalStart := GetTickCount;
 end;
 
+procedure TMainForm.Button3Click(Sender: TObject);
+begin
+   posy:=posy + 1 / (1024 * scale);
+   Draw(fQuality);
+end;
+
+procedure TMainForm.Button4Click(Sender: TObject);
+begin
+   posy:=posy - 1 / (1024 * scale);
+   Draw(fQuality);
+end;
+
+procedure TMainForm.Button5Click(Sender: TObject);
+begin
+   posx:=posx - 1 / (1024 * scale);
+   Draw(fQuality);
+end;
+
+procedure TMainForm.Button6Click(Sender: TObject);
+begin
+   posx:=posx + 1 / (1024 * scale);
+   Draw(fQuality);
+end;
+
 procedure TMainForm.cbApproxChange(Sender: TObject);
 begin
  Draw(fQuality);
- if not fQuality then
-   fRedrawIntervalStart := GetTickCount;
 
 end;
 
@@ -287,24 +319,24 @@ begin
  fractal.YPos := posy;
  fractal.ZScale := scale;
 
- ci := TColorSItem.Create;
- ci.Colors.Add(TLerpTag.Create(0,0,0,0,64));
- ci.Colors.Add(TLerpTag.Create(255,0,0,0,64));
- ci.Colors.Add(TLerpTag.Create(255,255,0,0,64));
- ci.Colors.Add(TLerpTag.Create(0,255,0,0,64));
- ci.Colors.Add(TLerpTag.Create(0,255,255,0,64));
- ci.Colors.Add(TLerpTag.Create(0,0,255,0,64));
- ci.Colors.Add(TLerpTag.Create(255,0,255,0,64));
- ci.Colors.Add(TLerpTag.Create(255,255,255,0,64));
- ci.Colors.Add(TLerpTag.Create(0,0,0,0,64));
- ci.Colors.Add(TLerpTag.Create(0,0,0,0,64));
+ ci := TColorSItem.Create(fractal.ColorSheme);
+ ci.Colors.Add(TLerpTag.Create(0,0,0,255,64));
+ ci.Colors.Add(TLerpTag.Create(255,0,0,255,64));
+ ci.Colors.Add(TLerpTag.Create(255,255,0,255,64));
+ ci.Colors.Add(TLerpTag.Create(0,255,0,255,64));
+ ci.Colors.Add(TLerpTag.Create(0,255,255,255,64));
+ ci.Colors.Add(TLerpTag.Create(0,0,255,255,64));
+ ci.Colors.Add(TLerpTag.Create(255,0,255,255,64));
+ ci.Colors.Add(TLerpTag.Create(255,255,255,255,64));
+ ci.Colors.Add(TLerpTag.Create(0,0,0,255,64));
+ ci.Colors.Add(TLerpTag.Create(0,0,0,255,64));
  ci.Name := 'Color';
  fractal.SetColorSheme(ci);
 
  for I := 0 to fractal.ColorSheme.Colorshemas.Count - 1 do
   cbColorSheme.Items.Add(fractal.ColorSheme.Colorshemas.Items[i].Name);
  cbColorSheme.ItemIndex := fractal.ColorSheme.SelectedIndex;
- ImgView.SetupBitmap(True, clWhite32);
+ ImgView.SetupBitmap(True, clBlack32);
 
  fDrawCS := TCriticalSection.Create;
 end;
@@ -344,6 +376,7 @@ end;
 procedure TMainForm.FormShow(Sender: TObject);
 begin
  Draw(True);
+ NavPage.Show;
 end;
 
 procedure TMainForm.OnDrawFinish(sender: TObject);
@@ -419,19 +452,8 @@ begin
     end;
 end;
 
-procedure TMainForm.XSpinChange(Sender: TObject);
-begin
- fposx := XSpin.Value;
-end;
-
-procedure TMainForm.YSpinChange(Sender: TObject);
-begin
-  fposy := YSpin.Value;
-end;
-
 procedure TMainForm.ZSpinChange(Sender: TObject);
 begin
- fscale := ZSpin.Value;
 end;
 
 { TDrawer }
@@ -473,6 +495,8 @@ begin
      if Layers.Count = 0 then
      begin
        layer := TBitmapLayer.Create(ImgView.Layers);
+       layer.Bitmap.CombineMode := cmMerge;
+       layer.Bitmap.DrawMode := dmBlend;
        layer.OnMouseDown := onLMouseDown;
        layer.OnMouseMove := onLMouseMove;
        layer.OnMouseUp := onLMouseUp;

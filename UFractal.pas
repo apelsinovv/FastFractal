@@ -53,6 +53,7 @@ type
     b,g,r,a:Single;
   end;
 
+  PLerpTag = ^TLerpTag;
   TLerpTag = record
     a,r,g,b:Single;
     llength:Longint;
@@ -95,11 +96,13 @@ type
                                   const zdepth: Integer);
   end;
 
+  TColorSheme = class;
   TColorSItem = class
    const
     fcl_gradiento_maxi = $FFFF;
 
   private
+   fowner: TColorSheme;
    flerp_factor0: PLerpTagArray;
    flerp_factor: PLerpTagArray;
 
@@ -109,13 +112,16 @@ type
    fCycleCount: Integer;
    fInterpolation: TInterpolation;
    fMandelbrotDepth: LongInt;
+    function getIndex: integer;
 
   protected
    destructor Destroy; override;
    procedure init_color_factor(var fGradientoFloat0, fGradientoFloat: PGradientoFloat; const lerp_len: Integer);
+   procedure Write(const writer: TWriter);
+   procedure Read(const reader: TReader);
 
   public
-   constructor Create;
+   constructor Create(const aowner: TColorSheme);
    procedure Compile(var fGradientoFloat0, fGradientoFloat: PGradientoFloat);
    property Name: ShortString read fName write fName;
    property Colors: TList<TLerpTag> read fColors;
@@ -123,13 +129,16 @@ type
    property CycleCount: Integer read fCycleCount write fCycleCount;
    property Interpolation: TInterpolation read fInterpolation write fInterpolation;
    property FractalDepth: LongInt read fMandelbrotDepth;
-
+   property Index: integer read getIndex;
   end;
 
   TColorSheme = class
    const
     fcl_gradiento_maxi = $FFFF;
   strict private
+   fstrm: TFileStream;
+   fWriter: TWriter;
+   fReader: TReader;
 //   flerp_factor0: PLerpTagArray;
 //   flerp_factor: PLerpTagArray;
    fGradientoFloat0: PGradientoFloat;
@@ -148,10 +157,12 @@ type
    destructor Destroy; override;
   public
    constructor Create(const SetDefaultColors: Boolean = true);
+   function add: TColorSItem;
    function Compile(const index: Integer): PGradientoFloat;
    function GetItem(const name: String): TColorSItem; overload;
    function GetItem(const index: Integer): TColorSItem; overload;
-
+   procedure Write(const filename: TFileName);
+   procedure Read(const filename: TFileName);
    property Colorshemas: TList<TColorSItem> read fColorshemas;
    property SelectedIndex: Integer read fSelectedIndex write SetSelectedIndex;
    property GradientFloat: PGradientoFloat read fGradientoFloat;
@@ -265,6 +276,7 @@ type
   end;
 
  function rgbaf(r,g,b,a:single):DWORD;
+ function HexToInt(Str : string): integer;
 
  var
     fFinishedEvent: THandle;
@@ -286,6 +298,13 @@ begin
   Result:=(byte(round(a*255)) shl 24) or (byte(ceil(r*255)) shl 16) or (byte(floor(g*255)) shl 8) or (byte(round(b*255)));
 end;
 
+function HexToInt(Str : string): integer;
+var i, r : integer;
+begin
+  val('$'+Trim(Str),r, i);
+  if i<>0 then HexToInt := 0
+  else HexToInt := r;
+end;
 
 procedure aligned_get_mem(var p1, p2:Pointer; count, edge:LongInt);
 begin
@@ -858,6 +877,11 @@ begin
   inherited;
 end;
 
+function TColorSItem.getIndex: integer;
+begin
+ result := fowner.Colorshemas.IndexOf(self);
+end;
+
 procedure TColorSItem.init_color_factor(var fGradientoFloat0, fGradientoFloat: PGradientoFloat; const lerp_len: Integer);
 var
  i,j,ssl:Longint;
@@ -908,6 +932,58 @@ begin
     inc(ssl, flerp_factor[i].llength);
   end;
   fMandelbrotDepth := ssl;
+end;
+
+procedure TColorSItem.Read(const reader: TReader);
+var
+ lt: PLerpTag;
+begin
+   fColors.Clear;
+  if assigned(reader) then
+  begin
+   fName := reader.ReadString;
+   fCycle := reader.ReadBoolean;
+   fCycleCount := reader.ReadInteger;
+   fInterpolation := TInterpolation(reader.ReadInteger);
+   fMandelbrotDepth := reader.ReadInt64;
+   reader.ReadListBegin;
+    while not Reader.EndOfList do
+    begin
+      new(lt);
+      lt.a := reader.ReadSingle;
+      lt.r := reader.ReadSingle;
+      lt.g := reader.ReadSingle;
+      lt.b := reader.ReadSingle;
+      lt.llength := reader.ReadInteger;
+      fColors.Add(lt^);
+      Dispose(lt);
+    end;
+   reader.ReadListEnd;
+  end;
+end;
+
+procedure TColorSItem.Write(const writer: TWriter);
+var
+ lt: TLerpTag;
+begin
+  if assigned(writer) then
+  begin
+   writer.WriteString(fName);
+   writer.WriteBoolean(fCycle);
+   writer.WriteInteger(fCycleCount);
+   writer.WriteInteger(integer(fInterpolation));
+   writer.WriteInteger(fMandelbrotDepth);
+   writer.WriteListBegin;
+   for lt in fColors do
+   begin
+     writer.WriteSingle(lt.a);
+     writer.WriteSingle(lt.r);
+     writer.WriteSingle(lt.g);
+     writer.WriteSingle(lt.b);
+     writer.WriteInteger(lt.llength);
+   end;
+   writer.WriteListEnd;
+  end;
 end;
 
 { TColorSheme }
@@ -968,6 +1044,32 @@ begin
   result := fColorshemas.Items[index];
 end;
 
+procedure TColorSheme.Read(const filename: TFileName);
+var
+ si: TColorSItem;
+begin
+  fstrm := TFileStream.Create(filename, fmOpenRead);
+  fReader := TReader.Create(fstrm, 512);
+  fColorshemas.Clear;
+ try
+  fReader.ReadSignature;
+  fInterpolation := TInterpolation(fReader.ReadInteger);
+  fSelectedIndex :=  fReader.ReadInteger;
+
+  fReader.ReadListBegin;
+  while not fReader.EndOfList do
+  begin
+   si := TColorSItem.Create(self);
+   si.Read(fReader);
+   fColorshemas.Add(si);
+  end;
+//  fReader.FlushBuffer;
+ finally
+  FreeAndNil(fReader);
+  FreeAndNil(fstrm);
+ end;
+end;
+
 {procedure TColorSheme.reinit_color_factor(const index, lerp_len: Integer);
 var
  i,j,ssl:Longint;
@@ -1024,7 +1126,7 @@ procedure TColorSheme.SetDefaultColorSheme;
 var
  ci: TColorSItem;
 begin
- ci := TColorSItem.Create;
+ ci := TColorSItem.Create(self);
  ci.Name := 'Default';
  ci.Colors.Add(TLerpTag.Create(0,0,0,0,64));
  ci.Colors.Add(TLerpTag.Create(1,0,0,0,64));
@@ -1061,6 +1163,34 @@ begin
    fSelectedIndex := Value;
    fColorshemas.Items[fSelectedIndex].Compile(fGradientoFloat0,  fGradientoFloat);
   end;
+end;
+
+procedure TColorSheme.Write(const filename: TFileName);
+var
+ si: TColorSItem;
+begin
+  fstrm := TFileStream.Create(filename, fmCreate);
+  fWriter := TWriter.Create(fstrm, 512);
+ try
+  fWriter.WriteSignature;
+  fWriter.WriteInteger(Integer(fInterpolation));
+  fWriter.WriteInteger(fSelectedIndex);
+
+  fWriter.WriteListBegin;
+  for si in fColorshemas do
+    si.Write(fWriter);
+  fWriter.WriteListEnd;
+  fWriter.FlushBuffer;
+ finally
+  FreeAndNil(fWriter);
+  FreeAndNil(fstrm);
+ end;
+end;
+
+function TColorSheme.add: TColorSItem;
+begin
+  result := TColorSItem.Create(self);
+  fColorshemas.Add(result);
 end;
 
 function TColorSheme.Compile(const index: Integer): PGradientoFloat;
@@ -1123,7 +1253,7 @@ end;
 procedure TColorSItem.Compile(var fGradientoFloat0,
   fGradientoFloat: PGradientoFloat);
 var i:longint;
- fico:Longint;
+ fico, fimo:Longint;
 begin
  try
   if assigned(flerp_factor0)then
@@ -1139,17 +1269,18 @@ begin
     end else begin
       fico := fColors.Count;
     end;
+    fimo := fColors.Count;
 
     aligned_get_mem(pointer(flerp_factor0), pointer(flerp_factor), fico * sizeof(TRGBAF), 16);
 
 
-  for i := 0 to fColors.Count - 1 do
+  for i := 0 to fico - 1 do
   begin
-      flerp_factor[i].r := fColors.Items[i].r / 255;
-      flerp_factor[i].g := fColors.Items[i].g / 255;
-      flerp_factor[i].b := fColors.Items[i].b / 255;
-      flerp_factor[i].a := fColors.Items[i].a / 255;
-      flerp_factor[i].llength := fColors.Items[i].llength;
+      flerp_factor[i].r := fColors.Items[i mod fimo].r / 255;
+      flerp_factor[i].g := fColors.Items[i mod fimo].g / 255;
+      flerp_factor[i].b := fColors.Items[i mod fimo].b / 255;
+      flerp_factor[i].a := fColors.Items[i mod fimo].a / 255;
+      flerp_factor[i].llength := fColors.Items[i mod fimo].llength;
   end;
 
    try
@@ -1164,8 +1295,9 @@ begin
 
 end;
 
-constructor TColorSItem.Create;
+constructor TColorSItem.Create(const aowner: TColorSheme);
 begin
+   fowner := aowner;
    flerp_factor0 := nil;
    flerp_factor := nil;
 
