@@ -7,12 +7,16 @@ object NavPage: TNavPage
   ClientHeight = 380
   ClientWidth = 169
   Color = clBtnFace
+  DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
+  GlassFrame.Enabled = True
+  GlassFrame.SheetOfGlass = True
   OldCreateOrder = False
+  OnClose = FormClose
   PixelsPerInch = 96
   TextHeight = 13
   object Panel2: TPanel
@@ -24,8 +28,6 @@ object NavPage: TNavPage
     BevelOuter = bvNone
     DockSite = True
     TabOrder = 0
-    ExplicitWidth = 171
-    ExplicitHeight = 461
     object Label6: TLabel
       Left = 6
       Top = 24
@@ -48,33 +50,33 @@ object NavPage: TNavPage
       Caption = 'Zoom:'
     end
     object XSpin: TJvSpinEdit
-      Left = 42
+      Left = 36
       Top = 16
-      Width = 121
+      Width = 129
       Height = 21
-      Decimal = 8
+      Decimal = 20
       ValueType = vtFloat
       Value = -2.600000000000000000
       TabOrder = 0
       OnChange = XSpinChange
     end
     object YSpin: TJvSpinEdit
-      Left = 42
+      Left = 36
       Top = 43
-      Width = 121
+      Width = 130
       Height = 21
-      Decimal = 8
+      Decimal = 20
       ValueType = vtFloat
       Value = -2.000000000000000000
       TabOrder = 1
       OnChange = YSpinChange
     end
     object ZSpin: TJvSpinEdit
-      Left = 42
+      Left = 36
       Top = 70
-      Width = 121
+      Width = 129
       Height = 21
-      Decimal = 8
+      Decimal = 20
       ValueType = vtFloat
       Value = 0.100000000000000000
       TabOrder = 2
@@ -147,9 +149,6 @@ object NavPage: TNavPage
       ItemHeight = 13
       TabOrder = 9
       OnClick = ListBox1Click
-      ExplicitTop = 221
-      ExplicitWidth = 171
-      ExplicitHeight = 245
     end
     object Button7: TButton
       Left = 7

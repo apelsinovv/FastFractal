@@ -184,7 +184,8 @@ var
  index: integer;
 begin
  index := ListView1.ItemIndex;
- ListView1.Items.Delete(index);
+ ci.Colors.Delete(index);
+// ListView1.Items.Delete(index);
  dec(index);
  if index < 0 then index := 0;
  RefreshColorSheme(index);
@@ -212,7 +213,7 @@ begin
    if ListView1.ItemFocused.Index <  (ListView1.Items.Count - 1) then
     btnDown.Enabled := True
    else
-    btnUp.Enabled := False;
+    btnDown.Enabled := False;
  end else
  begin
    btnInsert.Enabled := False;

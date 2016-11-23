@@ -7,7 +7,8 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, UFractal, Vcl.StdCtrls, Vcl.ExtCtrls,
   GR32_Image, GR32, GR32_Layers, JvFullColorSpaces, JvExStdCtrls, JvCombobox, JvFullColorCtrls,
   Vcl.Buttons, Vcl.Mask, JvExMask, JvSpin, math, Vcl.ComCtrls, syncobjs,
-  Vcl.ToolWin, UnavPage, USettings, IniFiles;
+  Vcl.ToolWin, UnavPage, USettings, IniFiles,
+  generics.collections;
 
 type
 
@@ -29,6 +30,7 @@ type
     StatusBar1: TStatusBar;
     SpeedButton2: TSpeedButton;
     btnControl: TSpeedButton;
+    Button1: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
@@ -66,7 +68,7 @@ type
       fSnapshot,
       fVideo,
       fVideotmp: String;
-
+      fDrawBusy: Boolean;
     procedure onLMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure onLMouseUp(Sender: TObject; Button: TMouseButton;
@@ -210,7 +212,9 @@ begin
  for i := 0 to fractal.ColorSheme.Colorshemas.Count - 1 do
   cbColorSheme.Items.Add(fractal.ColorSheme.Colorshemas.Items[i].Name);
  cbColorSheme.ItemIndex := fractal.ColorSheme.SelectedIndex;
+ fractal.ColorSheme.Compile(fractal.ColorSheme.SelectedIndex);
  cbColorSheme.OnChange := cbApproxChange;
+ Draw(fQuality);
 end;
 
 procedure TMainForm.SpeedButton2Click(Sender: TObject);
@@ -269,20 +273,74 @@ end;
 
 procedure TMainForm.Button1Click(Sender: TObject);
 var
- ns, ds:Double;
+ ns, ds, ilen, ideep, mstepx, mstepy, zstep:Double;
+ moveStepCount: integer;
+ zoomstepCount: integer;
+ lst: TList<TNavPoint>;
+ point1, point2: PNavPoint;
+ newpoint:TNavPoint;
+ i: integer;
+ slst: TStringList;
+function interpolate_linear(a, b, k:Double):Double;
 begin
+  Result := a * (1 - k) + b * (k);
+end;
 
+begin
+// step x, y
+      zstep := scale * power(1.2, 1);
+// step scale
     ns:=scale * power(1.2, 1);
-    ds := 1/scale - 1/ns;
     scale:=ns;
 
-    posx:=posx  + ds * (hcx / 1024);
-    posy:=posy + ds * (hcy / 1024);
+ if NavPage.ListBox1.Items.Count > 0 then
+ begin
+  lst := TList<TNavPoint>.Create;
+  try
+    for i:=0 to NavPage.ListBox1.Items.Count - 2 do
+    begin
+      point1 := PNavPoint(NavPage.ListBox1.Items.Objects[i]);
+      point2 := PNavPoint(NavPage.ListBox1.Items.Objects[i+1]);
 
-    Draw(fQuality);
-    if not fQuality then
-     fRedrawIntervalStart := GetTickCount;
+      ilen := point2.x  - point1.X;
+      ideep := point2.z - point1.z;
+      if (ideep > 0) or (ilen > 0) then
+      begin
+       zstep := point1.z;
+       mstepx := point1.X;
+       while abs(zstep) < abs(point2.z) do
+       begin
+        zstep := zstep  * power(1.2, 1);
+        mstepy := interpolate_linear(point1.Y, point2.Y, (mstepx - point1.X) / ilen);
+        newpoint.x := mstepx;
+        newpoint.y := mstepy;
+        newpoint.z := zstep;
+        if abs(mstepx) < abs(point2.x) then
+         mstepx := mstepx + 1 / (1024 * zstep);
+         lst.Add(newpoint);
+       end;
 
+       while abs(mstepx) < abs(point2.x) do
+       begin
+        mstepy := interpolate_linear(point1.Y, point2.Y, (mstepx - point1.X) / ilen);
+        newpoint.x := mstepx;
+        newpoint.y := mstepy;
+        newpoint.z := zstep;
+        if abs(mstepx) < abs(point2.x) then
+         mstepx := mstepx + 1 / (1024 * zstep);
+         lst.Add(newpoint);
+       end;
+      end;
+    end;
+    slst := TStringList.Create;
+     for newpoint in lst do
+      slst.Add(format('x:%2.16f-y:%2.16f-z:%2.16f',[newpoint.x, newpoint.y, newpoint.z]));
+    slst.SaveToFile('c:\drawpath.txt');
+    freeAndNil(slst);
+  finally
+   freeAndNil(lst);
+  end;
+ end;
 end;
 
 procedure TMainForm.Button2Click(Sender: TObject);
@@ -341,7 +399,8 @@ procedure TMainForm.Draw(Quality: Boolean);
 var
  fdrawer: TDrawer;
 begin
- fdrawer := TDrawer.Create(self, OnDrawFinish, Quality);
+ if not fDrawBusy then
+  fdrawer := TDrawer.Create(self, OnDrawFinish, Quality);
 
 end;
 
@@ -380,7 +439,7 @@ begin
  posy :=-1.81874501;
  scale := 0.20736000;
  fQuality := False;
-
+ fDrawBusy := False;
 
  fractal := TFractal.Create(self);
  fractal.Width := cImg_size[ResolutionIndex].X;
@@ -458,8 +517,6 @@ begin
    if (posx <> px) and (posy <> py) then
    begin
       Draw(fQuality);
-    if not fQuality then
-     fRedrawIntervalStart := GetTickCount;
    end;
 
 end;
@@ -479,6 +536,7 @@ procedure TMainForm.OnDrawFinish(sender: TObject);
 begin
  ProgressBar1.Position := 0;
  ImgView.Repaint;
+ fDrawBusy := False;
 end;
 
 procedure TMainForm.onLMouseDown(Sender: TObject; Button: TMouseButton;
@@ -580,6 +638,7 @@ end;
 constructor TDrawer.Create(AOwner: TMainForm; onTerm: TNotifyEvent; const Quality: Boolean);
 begin
   fOwnerForm := AOwner;
+  fOwnerForm.fDrawBusy := True;
   fQuality := Quality;
   FreeOnTerminate := true;
   OnTerminate := onTerm;

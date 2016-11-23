@@ -5,6 +5,10 @@ object MainForm: TMainForm
   ClientHeight = 473
   ClientWidth = 895
   Color = clBtnFace
+  UseDockManager = True
+  DockSite = True
+  DoubleBuffered = True
+  DragKind = dkDock
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -127,6 +131,15 @@ object MainForm: TMainForm
       Caption = 'Quality'
       TabOrder = 2
       OnClick = chbQualityClick
+    end
+    object Button1: TButton
+      Left = 384
+      Top = 10
+      Width = 97
+      Height = 25
+      Caption = 'Interpolate path'
+      TabOrder = 3
+      OnClick = Button1Click
     end
   end
   object ProgressBar1: TProgressBar

@@ -990,6 +990,7 @@ end;
 
 constructor TColorSheme.Create(const SetDefaultColors: Boolean = true);
 begin
+ fSelectedIndex := -1;
  fColorshemas := TList<TColorSItem>.Create;
  fInterpolation := ipLenear;
 // flerp_factor0 := nil;
@@ -1047,6 +1048,7 @@ end;
 procedure TColorSheme.Read(const filename: TFileName);
 var
  si: TColorSItem;
+ selected: integer;
 begin
   fstrm := TFileStream.Create(filename, fmOpenRead);
   fReader := TReader.Create(fstrm, 512);
@@ -1054,15 +1056,18 @@ begin
  try
   fReader.ReadSignature;
   fInterpolation := TInterpolation(fReader.ReadInteger);
-  fSelectedIndex :=  fReader.ReadInteger;
+  selected :=  fReader.ReadInteger;
 
   fReader.ReadListBegin;
   while not fReader.EndOfList do
   begin
+
+
    si := TColorSItem.Create(self);
    si.Read(fReader);
    fColorshemas.Add(si);
   end;
+   SelectedIndex := selected;
  finally
   FreeAndNil(fReader);
   FreeAndNil(fstrm);
@@ -1160,7 +1165,8 @@ begin
   if fSelectedIndex <> Value then
   begin
    fSelectedIndex := Value;
-   fColorshemas.Items[fSelectedIndex].Compile(fGradientoFloat0,  fGradientoFloat);
+   Compile(Value);
+//   fColorshemas.Items[fSelectedIndex].Compile(fGradientoFloat0,  fGradientoFloat);
   end;
 end;
 

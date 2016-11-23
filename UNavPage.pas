@@ -38,6 +38,7 @@ type
     procedure Button9Click(Sender: TObject);
     procedure Button10Click(Sender: TObject);
     procedure ListBox1Click(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     { Private declarations }
   public
@@ -155,7 +156,7 @@ begin
   navpoint.x := MainForm.posx;
   navpoint.y := MainForm.posy;
   navpoint.z := MainForm.scale;
-  ListBox1.AddItem(format('x:%f-y:%f-z:%f',[navpoint.x, navpoint.y, navpoint.z]), Tobject(navpoint));
+  ListBox1.AddItem(format('x:%2.20f-y:%2.20f-z:%2.20f',[navpoint.x, navpoint.y, navpoint.z]), Tobject(navpoint));
 end;
 
 procedure TNavPage.Button8Click(Sender: TObject);
@@ -205,6 +206,12 @@ begin
   finally
     FreeAndNil(dlg);
   end;
+end;
+
+procedure TNavPage.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  MainForm.btnControl.Down := false;
+  Action := caHide;
 end;
 
 procedure TNavPage.ListBox1Click(Sender: TObject);
