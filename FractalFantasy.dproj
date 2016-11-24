@@ -115,6 +115,10 @@
             <Form>SetFrm</Form>
             <FormType>dfm</FormType>
         </DCCReference>
+        <DCCReference Include="UMakeVideo.pas">
+            <Form>MakeVideo</Form>
+            <FormType>dfm</FormType>
+        </DCCReference>
         <None Include="inc\mandelbrot_fast.asm"/>
         <None Include="inc\renderer_fast.asm"/>
         <None Include="inc\renderer_fast_one_pass.asm"/>

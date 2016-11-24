@@ -7,8 +7,9 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, UFractal, Vcl.StdCtrls, Vcl.ExtCtrls,
   GR32_Image, GR32, GR32_Layers, JvFullColorSpaces, JvExStdCtrls, JvCombobox, JvFullColorCtrls,
   Vcl.Buttons, Vcl.Mask, JvExMask, JvSpin, math, Vcl.ComCtrls, syncobjs,
-  Vcl.ToolWin, UnavPage, USettings, IniFiles,
+  Vcl.ToolWin, UnavPage, USettings, IniFiles, UMakeVideo,
   generics.collections;
+
 
 type
 
@@ -30,7 +31,8 @@ type
     StatusBar1: TStatusBar;
     SpeedButton2: TSpeedButton;
     btnControl: TSpeedButton;
-    Button1: TButton;
+    btnMakeVideo: TButton;
+    Button3: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
@@ -38,7 +40,7 @@ type
     procedure cbApproxChange(Sender: TObject);
     procedure chbQualityClick(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
+    procedure btnMakeVideoClick(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure SpeedButton1Click(Sender: TObject);
     procedure Button6Click(Sender: TObject);
@@ -63,7 +65,6 @@ type
       fDepth: Integer;
       FSelection: TPositionedLayer;
       RBLayer: TRubberbandLayer;
-      fDrawCS: TCriticalSection;
       fRedrawIntervalStart: Cardinal;
       fSnapshot,
       fVideo,
@@ -101,6 +102,10 @@ type
     property ApproxIndex: Integer read fApproxIndex write setApproxIndex;
     property AntialiasIndex: Integer read fAntialiasIndex write setAntialiasIndex;
     property ResolutionIndex: Integer read fResolutionIndex write setResolutionIndex;
+    property tmpVideoPath: String read fVideotmp;
+    property VideoPath: String read fVideo;
+    property snapshotPath: String read fSnapshot;
+
   end;
 
   TDrawer = class(TThread)
@@ -110,16 +115,27 @@ type
    procedure Redraw;
   protected
    procedure execute; override;
-
   public
    constructor Create(AOwner: TMainForm; onTerm: TNotifyEvent; const Quality:  Boolean = False);
   end;
 
+  TRender = class(TThread)
+  private
+   fOwnerForm: TWinControl;
+   fMainForm: TmainForm;
+   fList: TStringList;
+   fTmpPath, fVideoPath: String;
+  protected
+   procedure execute; override;
+  public
+   constructor Create(const AOwner, aMainForm: TWinControl; const onTerm: TNotifyEvent;const list: TstringList; const TmpPath, VideoPath: String);
+  end;
 
 
 var
   MainForm: TMainForm;
   fractal: TFractal;
+  fDrawCS: TCriticalSection;
 
   const
    cImg_size : array[0..6] of TPoint =
@@ -271,14 +287,16 @@ begin
 
 end;
 
-procedure TMainForm.Button1Click(Sender: TObject);
+procedure TMainForm.btnMakeVideoClick(Sender: TObject);
+const
+ callign = 1000;
 var
- ns, ds, ilen, ideep, mstepx, mstepy, zstep:Double;
- moveStepCount: integer;
- zoomstepCount: integer;
- lst: TList<TNavPoint>;
+ ns, ds, lenx, leny, ideep,
+ mposx, mposy,
+ mstepx, mstepy,
+ zstep:Double;
  point1, point2: PNavPoint;
- newpoint:TNavPoint;
+ newpoint:PNavPoint;
  i: integer;
  slst: TStringList;
 function interpolate_linear(a, b, k:Double):Double;
@@ -286,59 +304,138 @@ begin
   Result := a * (1 - k) + b * (k);
 end;
 
+procedure addNewObject(const x,y,z: double);
+begin
+  new(newpoint);
+  newpoint.x := x;
+  newpoint.y := y;
+  newpoint.z := z;
+  makeVideo.ListBox1.Items.AddObject(format('x:%2.18f-y:%2.18f-z:%2.18f',[newpoint.x, newpoint.y, newpoint.z]), TObject(newpoint));
+end;
+
 begin
 // step x, y
-      zstep := scale * power(1.2, 1);
+ //     zstep := scale * power(1.2, 1);
 // step scale
-    ns:=scale * power(1.2, 1);
-    scale:=ns;
+    scale := scale * power(1.2, 1);
+//    scale:=ns;
 
  if NavPage.ListBox1.Items.Count > 0 then
  begin
-  lst := TList<TNavPoint>.Create;
+   if assigned(makeVideo) then
+    FreeAndnIl(makeVideo);
+   makeVideo := TmakeVideo.Create(self);
   try
     for i:=0 to NavPage.ListBox1.Items.Count - 2 do
     begin
       point1 := PNavPoint(NavPage.ListBox1.Items.Objects[i]);
       point2 := PNavPoint(NavPage.ListBox1.Items.Objects[i+1]);
 
-      ilen := point2.x  - point1.X;
+      lenx := (point2.x + callign)  - (point1.X + callign);
+      leny := (point2.y + callign)  - (point1.y + callign);
+
       ideep := point2.z - point1.z;
-      if (ideep > 0) or (ilen > 0) then
+
+      if ((lenx > leny) and (lenx > 0)) or
+         ((lenx < leny) and (lenx < 0)) then
       begin
+//      if (ideep > 0) or (ilen > 0) then
+//        new(newpoint);
+//        newpoint.x :=  point1.x;
+//        newpoint.y :=  point1.y;
+//        newpoint.z :=  point1.z;
+//        makeVideo.ListBox1.Items.AddObject(format('x:%2.18f-y:%2.18f-z:%2.18f',[newpoint.x, newpoint.y, newpoint.z]), TObject(newpoint));
+
+
        zstep := point1.z;
-       mstepx := point1.X;
-       while abs(zstep) < abs(point2.z) do
+//       mstepx := 100 / (1024 * zstep);//point1.X;
+{       while zstep < point2.z do
        begin
         zstep := zstep  * power(1.2, 1);
         mstepy := interpolate_linear(point1.Y, point2.Y, (mstepx - point1.X) / ilen);
+        new(newpoint);
         newpoint.x := mstepx;
         newpoint.y := mstepy;
         newpoint.z := zstep;
-        if abs(mstepx) < abs(point2.x) then
-         mstepx := mstepx + 1 / (1024 * zstep);
-         lst.Add(newpoint);
+        makeVideo.ListBox1.Items.AddObject(format('x:%2.18f-y:%2.18f-z:%2.18f',[newpoint.x, newpoint.y, newpoint.z]), TObject(newpoint));
+        if mstepx < point2.x then
+         mstepx := mstepx + 100 / (1024 * zstep);
        end;
+ }
+       mposx := point1.X;
 
-       while abs(mstepx) < abs(point2.x) do
+       while (
+        ((((point2.x + callign) - (mposx + callign)) > 0) and (lenx > 0)) or
+        ((((point2.x + callign) - (mposx + callign)) < 0) and (lenx < 0))
+       ) do
        begin
-        mstepy := interpolate_linear(point1.Y, point2.Y, (mstepx - point1.X) / ilen);
-        newpoint.x := mstepx;
-        newpoint.y := mstepy;
-        newpoint.z := zstep;
-        if abs(mstepx) < abs(point2.x) then
-         mstepx := mstepx + 1 / (1024 * zstep);
-         lst.Add(newpoint);
+        mposy := interpolate_linear(point1.Y, point2.Y, (mposx - point1.X) / lenx);
+
+        addNewObject(mposx, mposy, zstep);
+
+        mstepx := 100 / (1024 * zstep);
+        if lenx > 0 then
+         mposx := mposx + mstepx
+        else
+         mposx := mposx - mstepx;
+        if (ideep > 0) and (zstep < ideep) then
+         zstep := zstep + scale
+        else
+         if (ideep < 0) and (zstep > ideep) then
+          zstep := zstep - scale
+
+
+       end;
+      end else
+      begin
+       zstep := point1.z;
+       mposy := point1.y;
+
+       while (
+        ((((point2.y + callign) - (mposy + callign)) > 0) and (leny > 0)) or
+        ((((point2.y + callign) - (mposy + callign)) < 0) and (leny < 0))
+       ) do
+       begin
+        mposx := interpolate_linear(point1.x, point2.x, (mposy - point1.y) / leny);
+
+        mstepy := 100 / (1024 * zstep);
+
+        addNewObject(mposx, mposy, zstep);
+
+        if leny > 0 then
+         mposy := mposy + mstepy
+        else
+         mposy := mposy - mstepy;
+
+        if (ideep > 0) and (zstep < ideep) then
+         zstep := zstep + scale
+        else
+         if (ideep < 0) and (zstep > ideep) then
+          zstep := zstep - scale
+
        end;
       end;
     end;
-    slst := TStringList.Create;
-     for newpoint in lst do
-      slst.Add(format('x:%2.16f-y:%2.16f-z:%2.16f',[newpoint.x, newpoint.y, newpoint.z]));
-    slst.SaveToFile('c:\drawpath.txt');
-    freeAndNil(slst);
+
+    while ((ideep > 0) and (zstep < ideep)) or
+          ((ideep < 0) and (zstep > ideep))  do
+    begin
+        if (ideep > 0) and (zstep < ideep) then
+         zstep := zstep + scale
+        else
+         if (ideep < 0) and (zstep > ideep) then
+          zstep := zstep - scale;
+
+      addNewObject(mposx, mposy, zstep);
+
+    end;
+
+
+    point1 := PNavPoint(NavPage.ListBox1.Items.Objects[NavPage.ListBox1.Items.Count - 1]);
+    addNewObject(point1.x, point1.y, point1.z);
+
   finally
-   freeAndNil(lst);
+   makeVideo.ShowModal;
   end;
  end;
 end;
@@ -713,6 +810,65 @@ end;
 procedure TDrawer.execute;
 begin
   Redraw;
+end;
+
+{ TRender }
+
+constructor TRender.Create(const AOwner, aMainForm: TWinControl; const onTerm: TNotifyEvent;
+  const list: TstringList; const TmpPath, VideoPath: String);
+begin
+  fOwnerForm := AOwner;
+  fMainForm := TMainForm(aMainForm);
+  FreeOnTerminate := true;
+  fList := list;
+  fTmpPath := TmpPath;
+  fVideoPath := VideoPath;
+  OnTerminate := onTerm;
+  inherited Create(False);
+end;
+
+procedure TRender.execute;
+var
+ P: TPoint;
+ W, H: Single;
+ np: PNavPoint;
+ i: integer;
+ bmp: TBitmap32;
+begin
+ if not assigned(fOwnerForm) then Exit;
+ with fOwnerForm do
+ begin
+  try
+   fractal.Width := Cimg_size[fMainForm.ResolutionIndex].X;
+   fractal.Height := Cimg_size[fMainForm.ResolutionIndex].Y;
+   fractal.ApproxResolution := 1;
+   fractal.Antialiasing := cAntialias[fMainForm.AntialiasIndex];
+   fractal.Depth := fMainForm.Depth;
+   fractal.ColorSheme.SelectedIndex := fMainForm.cbColorSheme.ItemIndex;
+   for I := 0 to flist.Count - 1 do
+   begin
+    np := PNavPoint(flist.Objects[i]);
+    if Assigned(np) then
+    begin
+       bmp := TBitmap32.Create;
+       try
+         fractal.XPos := np.x;
+         fractal.YPos := np.y;
+         fractal.ZScale := np.z;
+         fractal.QualityDraw(bmp);
+         if not DirectoryExists(fTmpPath) then
+          ForceDirectories(fTmpPath);
+         bmp.SaveToFile(IncludeTrailingPathDelimiter(fTmpPath) +  format('%s-%.5d.bmp',[TMakeVideo(fOwnerForm).Edit1.Text, i]));
+       finally
+        FreeAndNil(bmp);
+       end;
+      PostMessage(fOwnerForm.Handle, WM_RENDER_ITEM, i, 0);
+    end;
+   end;
+  finally
+    fDrawCS.Release;
+  end;
+ end;
 end;
 
 end.

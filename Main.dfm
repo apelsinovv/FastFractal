@@ -6,9 +6,6 @@ object MainForm: TMainForm
   ClientWidth = 895
   Color = clBtnFace
   UseDockManager = True
-  DockSite = True
-  DoubleBuffered = True
-  DragKind = dkDock
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -132,14 +129,23 @@ object MainForm: TMainForm
       TabOrder = 2
       OnClick = chbQualityClick
     end
-    object Button1: TButton
-      Left = 384
+    object btnMakeVideo: TButton
+      Left = 409
       Top = 10
       Width = 97
       Height = 25
-      Caption = 'Interpolate path'
+      Caption = 'Make Video'
+      Enabled = False
       TabOrder = 3
-      OnClick = Button1Click
+      OnClick = btnMakeVideoClick
+    end
+    object Button3: TButton
+      Left = 512
+      Top = 10
+      Width = 75
+      Height = 25
+      Caption = 'Snapshot'
+      TabOrder = 4
     end
   end
   object ProgressBar1: TProgressBar

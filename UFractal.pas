@@ -273,6 +273,7 @@ type
    property XPos: Double read fxstart write fxstart;
    property YPos: Double read fystart write fystart;
    property ZScale: Double read fzscale write fzscale;
+   property Owner: TWinControl read fOwner write fOwner;
   end;
 
  function rgbaf(r,g,b,a:single):DWORD;

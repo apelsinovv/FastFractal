@@ -40,6 +40,7 @@ type
     procedure ListBox1Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
+    procedure videobtnRefresh;
     { Private declarations }
   public
     { Public declarations }
@@ -59,7 +60,6 @@ var
  strm: TFileStream;
  str: String;
  np: PNavPoint;
- i: integer;
 begin
   dlg := TOpenDialog.Create(self);
   try
@@ -98,6 +98,7 @@ begin
   finally
     FreeAndNil(dlg);
   end;
+ videobtnRefresh;
 end;
 
 procedure TNavPage.Button1Click(Sender: TObject);
@@ -148,6 +149,15 @@ begin
  end;
 end;
 
+procedure  TNavPage.videobtnRefresh;
+begin
+ if ListBox1.Items.Count > 2 then
+  MainForm.btnMakeVideo.Enabled := True
+ else
+  MainForm.btnMakeVideo.Enabled := False
+
+end;
+
 procedure TNavPage.Button7Click(Sender: TObject);
 var
  navpoint: PNavPoint;
@@ -156,7 +166,8 @@ begin
   navpoint.x := MainForm.posx;
   navpoint.y := MainForm.posy;
   navpoint.z := MainForm.scale;
-  ListBox1.AddItem(format('x:%2.20f-y:%2.20f-z:%2.20f',[navpoint.x, navpoint.y, navpoint.z]), Tobject(navpoint));
+  ListBox1.AddItem(format('x:%2.18f-y:%2.18f-z:%2.18f',[navpoint.x, navpoint.y, navpoint.z]), Tobject(navpoint));
+  videobtnRefresh;
 end;
 
 procedure TNavPage.Button8Click(Sender: TObject);
@@ -168,7 +179,7 @@ begin
   navpoint := PNavPoint(ListBox1.Items.Objects[ListBox1.ItemIndex]);
   dispose(navpoint);
   ListBox1.Items.Delete(ListBox1.ItemIndex);
-
+ videobtnRefresh;
 end;
 
 procedure TNavPage.Button9Click(Sender: TObject);

@@ -5,7 +5,7 @@ object NavPage: TNavPage
   BorderStyle = bsSizeToolWin
   Caption = 'navigation'
   ClientHeight = 380
-  ClientWidth = 169
+  ClientWidth = 190
   Color = clBtnFace
   DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
@@ -22,12 +22,15 @@ object NavPage: TNavPage
   object Panel2: TPanel
     Left = 0
     Top = 0
-    Width = 169
+    Width = 190
     Height = 380
     Align = alClient
     BevelOuter = bvNone
     DockSite = True
     TabOrder = 0
+    DesignSize = (
+      190
+      380)
     object Label6: TLabel
       Left = 6
       Top = 24
@@ -52,33 +55,36 @@ object NavPage: TNavPage
     object XSpin: TJvSpinEdit
       Left = 36
       Top = 16
-      Width = 129
+      Width = 150
       Height = 21
-      Decimal = 20
+      Decimal = 18
       ValueType = vtFloat
       Value = -2.600000000000000000
+      Anchors = [akLeft, akTop, akRight]
       TabOrder = 0
       OnChange = XSpinChange
     end
     object YSpin: TJvSpinEdit
       Left = 36
       Top = 43
-      Width = 130
+      Width = 150
       Height = 21
-      Decimal = 20
+      Decimal = 18
       ValueType = vtFloat
       Value = -2.000000000000000000
+      Anchors = [akLeft, akTop, akRight]
       TabOrder = 1
       OnChange = YSpinChange
     end
     object ZSpin: TJvSpinEdit
       Left = 36
       Top = 70
-      Width = 129
+      Width = 150
       Height = 21
-      Decimal = 20
+      Decimal = 18
       ValueType = vtFloat
       Value = 0.100000000000000000
+      Anchors = [akLeft, akTop, akRight]
       TabOrder = 2
       OnChange = ZSpinChange
     end
@@ -142,7 +148,7 @@ object NavPage: TNavPage
     object ListBox1: TListBox
       Left = 0
       Top = 216
-      Width = 169
+      Width = 190
       Height = 164
       Align = alBottom
       Anchors = [akLeft, akTop, akRight, akBottom]
@@ -160,7 +166,7 @@ object NavPage: TNavPage
       OnClick = Button7Click
     end
     object Button8: TButton
-      Left = 29
+      Left = 33
       Top = 195
       Width = 20
       Height = 20
@@ -169,19 +175,21 @@ object NavPage: TNavPage
       OnClick = Button8Click
     end
     object Button9: TButton
-      Left = 72
+      Left = 92
       Top = 195
       Width = 44
       Height = 20
+      Anchors = [akTop, akRight]
       Caption = 'Save'
       TabOrder = 12
       OnClick = Button9Click
     end
     object Button10: TButton
-      Left = 122
+      Left = 142
       Top = 195
       Width = 44
       Height = 20
+      Anchors = [akTop, akRight]
       Caption = 'Load'
       TabOrder = 13
       OnClick = Button10Click
