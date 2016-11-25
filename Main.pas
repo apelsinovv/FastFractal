@@ -15,6 +15,7 @@ type
 
   PNavPoint = ^TNavPoint;
   TNavPoint= record
+   hcx, hcy: Double;
    x,y,z : Double;
   end;
 
@@ -313,11 +314,46 @@ begin
   makeVideo.ListBox1.Items.AddObject(format('x:%2.18f-y:%2.18f-z:%2.18f',[newpoint.x, newpoint.y, newpoint.z]), TObject(newpoint));
 end;
 
+procedure zscale(dc: integer; var x, y, z: double);
+var
+ ns, ds: double;
+begin
+
+  ns:=z * power(1.2, 1 * dc);
+  ds := 1/z - 1/ns;
+  z := ns;
+//  x:=x  + ds * ((fractal.Width div 2) / 1024);
+//  y:=y + ds * ((fractal.Height div 2) / 1024);
+end;
+
+
+function checkzoom(point1, point2: PNavPoint): boolean;
+var
+ dx1, dx2,
+ ns, ds: double;
+begin
+   ns:=point1.z * power(1.2, -1);
+   ds := 1/point1.z - 1/ns;
+
+//    posx:=posx  + ds * (hcx / 1024);
+
+   dx1:= (point1.x - 1) / ds;
+//   dx1:=point1.z  - ds;
+
+   ns:=point2.z * power(1.2, -1);
+   ds := 1/point2.z - 1/ns;
+//   dx2:=point2.z  - ds;
+
+   dx2:= (point2.x - 1) / ds;
+
+   result := dx1 = dx2;
+end;
+
 begin
 // step x, y
  //     zstep := scale * power(1.2, 1);
 // step scale
-    scale := scale * power(1.2, 1);
+
 //    scale:=ns;
 
  if NavPage.ListBox1.Items.Count > 0 then
@@ -331,6 +367,9 @@ begin
       point1 := PNavPoint(NavPage.ListBox1.Items.Objects[i]);
       point2 := PNavPoint(NavPage.ListBox1.Items.Objects[i+1]);
 
+
+//      checkzoom(point1, point2);
+
       lenx := (point2.x + callign)  - (point1.X + callign);
       leny := (point2.y + callign)  - (point1.y + callign);
 
@@ -339,31 +378,8 @@ begin
       if ((lenx > leny) and (lenx > 0)) or
          ((lenx < leny) and (lenx < 0)) then
       begin
-//      if (ideep > 0) or (ilen > 0) then
-//        new(newpoint);
-//        newpoint.x :=  point1.x;
-//        newpoint.y :=  point1.y;
-//        newpoint.z :=  point1.z;
-//        makeVideo.ListBox1.Items.AddObject(format('x:%2.18f-y:%2.18f-z:%2.18f',[newpoint.x, newpoint.y, newpoint.z]), TObject(newpoint));
-
-
        zstep := point1.z;
-//       mstepx := 100 / (1024 * zstep);//point1.X;
-{       while zstep < point2.z do
-       begin
-        zstep := zstep  * power(1.2, 1);
-        mstepy := interpolate_linear(point1.Y, point2.Y, (mstepx - point1.X) / ilen);
-        new(newpoint);
-        newpoint.x := mstepx;
-        newpoint.y := mstepy;
-        newpoint.z := zstep;
-        makeVideo.ListBox1.Items.AddObject(format('x:%2.18f-y:%2.18f-z:%2.18f',[newpoint.x, newpoint.y, newpoint.z]), TObject(newpoint));
-        if mstepx < point2.x then
-         mstepx := mstepx + 100 / (1024 * zstep);
-       end;
- }
        mposx := point1.X;
-
        while (
         ((((point2.x + callign) - (mposx + callign)) > 0) and (lenx > 0)) or
         ((((point2.x + callign) - (mposx + callign)) < 0) and (lenx < 0))
@@ -371,24 +387,30 @@ begin
        begin
         mposy := interpolate_linear(point1.Y, point2.Y, (mposx - point1.X) / lenx);
 
-        addNewObject(mposx, mposy, zstep);
+
+        if (ideep > 0) and (zstep < point2.z) then
+         zscale(1, mposx, mposy, zstep)
+//         zstep := zstep + scale
+        else
+         if (ideep < 0) and (zstep > point2.z) then
+           zscale(-1, mposx, mposy, zstep);
+
+//          zstep := zstep - scale
 
         mstepx := 100 / (1024 * zstep);
         if lenx > 0 then
          mposx := mposx + mstepx
         else
          mposx := mposx - mstepx;
-        if (ideep > 0) and (zstep < ideep) then
-         zstep := zstep + scale
-        else
-         if (ideep < 0) and (zstep > ideep) then
-          zstep := zstep - scale
 
+
+
+        addNewObject(mposx, mposy, zstep);
 
        end;
       end else
       begin
-       zstep := point1.z;
+//       zstep := point1.z;
        mposy := point1.y;
 
        while (
@@ -398,33 +420,43 @@ begin
        begin
         mposx := interpolate_linear(point1.x, point2.x, (mposy - point1.y) / leny);
 
-        mstepy := 100 / (1024 * zstep);
+////////////
+        if (ideep > 0) and (zstep < point2.z) then
+         zscale(1, mposx, mposy, zstep)
+////////       zstep := zstep + scale
+        else
+         if (ideep < 0) and (zstep > point2.z) then
+          zscale(-1, mposx, mposy, zstep);
 
-        addNewObject(mposx, mposy, zstep);
+//          zstep := zstep - scale
+
+        mstepy := 100 / (1024 * zstep);
 
         if leny > 0 then
          mposy := mposy + mstepy
         else
          mposy := mposy - mstepy;
 
-        if (ideep > 0) and (zstep < ideep) then
-         zstep := zstep + scale
-        else
-         if (ideep < 0) and (zstep > ideep) then
-          zstep := zstep - scale
+
+
+        addNewObject(mposx, mposy, zstep);
 
        end;
       end;
     end;
 
-    while ((ideep > 0) and (zstep < ideep)) or
-          ((ideep < 0) and (zstep > ideep))  do
+    while ((ideep > 0) and (zstep < point2.z)) or
+          ((ideep < 0) and (zstep > point2.z))  do
     begin
-        if (ideep > 0) and (zstep < ideep) then
-         zstep := zstep + scale
+        if (ideep > 0) and (zstep < point2.z) then
+         zscale(1, mposx, mposy, zstep)
+
+//         zstep := zstep + scale
         else
-         if (ideep < 0) and (zstep > ideep) then
-          zstep := zstep - scale;
+         if (ideep < 0) and (zstep > point2.z) then
+         zscale(-1, mposx, mposy, zstep);
+
+//          zstep := zstep - scale;
 
       addNewObject(mposx, mposy, zstep);
 

@@ -16,17 +16,19 @@ type
     XSpin: TJvSpinEdit;
     YSpin: TJvSpinEdit;
     ZSpin: TJvSpinEdit;
-    Button1: TButton;
-    Button2: TButton;
-    Button3: TButton;
-    Button4: TButton;
-    Button5: TButton;
-    Button6: TButton;
     ListBox1: TListBox;
     Button7: TButton;
     Button8: TButton;
     Button9: TButton;
     Button10: TButton;
+    Panel1: TPanel;
+    Button1: TButton;
+    Button2: TButton;
+    Button3: TButton;
+    Button6: TButton;
+    Button5: TButton;
+    Button4: TButton;
+    Button11: TButton;
     procedure XSpinChange(Sender: TObject);
     procedure YSpinChange(Sender: TObject);
     procedure ZSpinChange(Sender: TObject);
@@ -39,6 +41,8 @@ type
     procedure Button10Click(Sender: TObject);
     procedure ListBox1Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure Panel2Resize(Sender: TObject);
+    procedure Button11Click(Sender: TObject);
   private
     procedure videobtnRefresh;
     { Private declarations }
@@ -84,6 +88,8 @@ begin
         begin
          str := rd.ReadString;
          new(np);
+         np.hcx := rd.ReadDouble;
+         np.hcy := rd.ReadDouble;
          np.x := rd.ReadDouble;
          np.y := rd.ReadDouble;
          np.z := rd.ReadDouble;
@@ -101,6 +107,18 @@ begin
  videobtnRefresh;
 end;
 
+procedure TNavPage.Button11Click(Sender: TObject);
+var
+ np: PNavPoint;
+begin
+ while ListBox1.Items.Count > 0 do
+ begin
+  np := PNavPoint(ListBox1.Items.Objects[0]);
+  dispose(np);
+  ListBox1.Items.Delete(0);
+ end;
+end;
+
 procedure TNavPage.Button1Click(Sender: TObject);
 var
  ns, ds:Double;
@@ -110,6 +128,8 @@ begin
     ns:=scale * power(1.2, 1);
     ds := 1/scale - 1/ns;
     scale:=ns;
+
+
 
     posx:=posx  + ds * (hcx / 1024);
     posy:=posy + ds * (hcy / 1024);
@@ -151,7 +171,7 @@ end;
 
 procedure  TNavPage.videobtnRefresh;
 begin
- if ListBox1.Items.Count > 2 then
+ if ListBox1.Items.Count > 1 then
   MainForm.btnMakeVideo.Enabled := True
  else
   MainForm.btnMakeVideo.Enabled := False
@@ -163,10 +183,12 @@ var
  navpoint: PNavPoint;
 begin
  new(navpoint);
+  navpoint.hcx := MainForm.hcx;
+  navpoint.hcy := MainForm.hcy;
   navpoint.x := MainForm.posx;
   navpoint.y := MainForm.posy;
   navpoint.z := MainForm.scale;
-  ListBox1.AddItem(format('x:%2.18f-y:%2.18f-z:%2.18f',[navpoint.x, navpoint.y, navpoint.z]), Tobject(navpoint));
+  ListBox1.AddItem(format('hcx:%f-hcy:%f x:%2.18f-y:%2.18f-z:%2.18f',[navpoint.hcx, navpoint.hcy, navpoint.x, navpoint.y, navpoint.z]), Tobject(navpoint));
   videobtnRefresh;
 end;
 
@@ -203,6 +225,8 @@ begin
         for I := 0 to ListBox1.Items.Count - 1 do
         begin
          wrt.WriteString(ListBox1.Items.Strings[i]);
+         wrt.WriteDouble(PNavPoint(ListBox1.Items.Objects[i]).hcx);
+         wrt.WriteDouble(PNavPoint(ListBox1.Items.Objects[i]).hcy);
          wrt.WriteDouble(PNavPoint(ListBox1.Items.Objects[i]).x);
          wrt.WriteDouble(PNavPoint(ListBox1.Items.Objects[i]).y);
          wrt.WriteDouble(PNavPoint(ListBox1.Items.Objects[i]).z);
@@ -237,6 +261,11 @@ begin
    ZSpin.Value := np.z;
    MainForm.Draw(MainForm.fQuality);
  end;
+end;
+
+procedure TNavPage.Panel2Resize(Sender: TObject);
+begin
+ panel1.Left := panel2.Left + (panel2.Width div 2 - panel1.Width div 2);
 end;
 
 procedure TNavPage.XSpinChange(Sender: TObject);
